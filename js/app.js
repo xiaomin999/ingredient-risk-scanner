@@ -57,10 +57,10 @@
     if (t.length === 1) return true;  // 单字符
     if (/^[\d.\s×x×^0-9eE+\-]+$/.test(t)) return true;  // 纯数字/科学计数法
     if (/[<>≤≥%]/.test(t)) return true;  // 含比较符/百分号
-    if (/(CFU|cfu|千卡|kcal|mg\/|kg|毫升)/i.test(t)) return true;
-    if (/^(添加量|含量|未检出|活菌数|产品类型|风味发酵|保质期|净含量|出厂|符合|国家标准|生产|贮藏|条件|温度|参考|产品|国标|gb|配料|表|依据|第一法|第二法|第三法)/.test(t)) return true;
-    if (/^(g|kg|ml|克|千克|毫克|微克|升|毫升)(\/|每|／)/.test(t)) return true;
-    if (/(检测方法|测定|检验|国标|食品添加剂|使用标准|标?准)/.test(t)) return true;
+    if (/(CFU|cfu|千卡|kcal|mg\/|kg|毫升|千克|毫克|微克|^\d+(?:\.\d+)?(?:g|kg|ml|克|毫克|微克|毫升|千克|l|mg)$)/i.test(t)) return true;
+    if (/^(添加量|含量|未检出|活菌数|产品类型|风味发酵|保质期|净含量|出厂时|符合|国家标准|生产|贮藏|条件|温度|参考|产品|国标|配料)/.test(t)) return true;
+    if (/(第一法|第二法|第三法|检测方法|测定方法|检验方法|国标|食品添加剂|使用标准|根据\s*GB|依据\s*GB|标\s?准)/.test(t)) return true;
+    if (/^[\u4e00-\u9fa5]{1,3}$/.test(t) && /(依据|检测|测定|检验|标?准|含量|未检出|出厂|参考|参考值|参考范围)/.test(t)) return true;
     return false;
   }
 
