@@ -4,6 +4,7 @@
   var DB = window.RISK_DB || [];
   var TAGS = window.RISK_TAGS || {};
   var TAG_MAP = window.RISK_TAG_MAP || {};
+  var HEALTH_DB = window.HEALTH_DB || [];
 
   /* ---------- 导航 / 折叠 ---------- */
   var sidebar = document.getElementById('sidebar');
@@ -75,6 +76,8 @@
     if (/^(添加量|含量|未检出|活菌数|产品类型|风味发酵|保质期|净含量|出厂时|符合|国家标准|生产|贮藏|条件|温度|参考|产品|国标|配料)/.test(t)) return true;
     if (/(第一法|第二法|第三法|检测方法|测定方法|检验方法|国标|食品添加剂|使用标准|根据\s*GB|依据\s*GB|标\s?准)/.test(t)) return true;
     if (/^[\u4e00-\u9fa5]{1,3}$/.test(t) && /(依据|检测|测定|检验|标?准|含量|未检出|出厂|参考|参考值|参考范围)/.test(t)) return true;
+    // 合成 token：成分名 + 声明词（OCR 把"蔗糖"和"含量"拼到一起）
+    if (/(含量|添加量|未检出|检测值|测定值)$/.test(t)) return true;
     return false;
   }
 
@@ -259,6 +262,18 @@
       if (bestE) tokenBest[t] = bestE;
     });
 
+    // 健康百科：仅对「未命中风险库」的 token 二次匹配，避免「木糖醇」既显示风险又显示健康说明
+    var tokenHealth = {};
+    tokens.forEach(function (t) {
+      if (tokenBest[t]) return;
+      var bestH = null, bestLen = 0;
+      HEALTH_DB.forEach(function (e) {
+        var len = window.bestAliasLenForTokenHealth(e, t);
+        if (len > bestLen) { bestLen = len; bestH = e; }
+      });
+      if (bestH) tokenHealth[t] = bestH;
+    });
+
     var matchedMap = {};
     tokens.forEach(function (t) { if (tokenBest[t]) matchedMap[tokenBest[t].id] = tokenBest[t]; });
     DB.forEach(function (e) { if (entryMatchedByFullTextLatin(e, searchText)) matchedMap[e.id] = e; });
@@ -267,15 +282,17 @@
 
     var tokInfo = tokens.map(function (t) {
       var bestE = tokenBest[t] || null;
+      var bestH = tokenHealth[t] || null;
       return {
         t: t,
         level: bestE ? bestE.risk : null,
         entry: bestE,
-        isNoise: !bestE && isNoiseToken(t)
+        health: bestH,
+        isNoise: !bestE && !bestH && isNoiseToken(t)
       };
     });
 
-    currentResult = { raw: raw, matched: matched, totalTokens: tokens.length, tokInfo: tokInfo, section: seg };
+    currentResult = { raw: raw, matched: matched, totalTokens: tokens.length, tokInfo: tokInfo, section: seg, healthMatched: Object.keys(tokenHealth).map(function (k) { return tokenHealth[k]; }) };
     renderResult(currentResult, tokInfo);
     resultArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -343,13 +360,15 @@
 
     // 三组分类统计
     var hitTokens = tokInfo.filter(function (ti) { return ti.level; });
-    var normalTokens = tokInfo.filter(function (ti) { return !ti.level && !ti.isNoise; });
+    var knownHealth = tokInfo.filter(function (ti) { return !ti.level && ti.health; });
+    var normalTokens = tokInfo.filter(function (ti) { return !ti.level && !ti.health && !ti.isNoise; });
     var noiseTokens = tokInfo.filter(function (ti) { return ti.isNoise; });
 
     html += '<details open style="margin-top:14px"><summary class="muted small" style="cursor:pointer;font-weight:600">查看识别成分明细（' + totalTokens + ' 项）</summary>';
     html += '<div class="muted small" style="margin:8px 0 10px;line-height:1.7">';
     html += '共识别 <b>' + totalTokens + '</b> 项，其中：';
     html += '<b style="color:var(--high)">' + hitTokens.length + '</b> 项命中风险库（高 ' + h + ' / 中 ' + m + ' / 低 ' + l + '），';
+    html += '<b style="color:#2e7d32">' + knownHealth.length + '</b> 项已收录健康成分（资料库有说明），';
     html += '<b style="color:var(--muted)">' + normalTokens.length + '</b> 项为普通成分（资料库未收录，默认安全），';
     html += '<b style="color:#bbb">' + noiseTokens.length + '</b> 项已忽略（数字/含量/单位等杂质）。';
     html += '</div>';
@@ -363,6 +382,7 @@
         var cls = levelFn(ti);
         var tip = '';
         if (ti.entry) tip = ' title="命中：' + esc(ti.entry.name) + '（' + riskName(ti.entry.risk) + '）"';
+        else if (ti.health) tip = ' title="已收录健康成分：' + esc(ti.health.name) + '（' + esc(ti.health.category) + '）。详见下方「成分说明」。"';
         else if (ti.isNoise) tip = ' title="已忽略：数字 / 含量声明 / 单位等非成分项"';
         else tip = ' title="普通成分：资料库未收录此成分"';
         s += '<span class="tok ' + cls + '"' + tip + '>' + esc(ti.t) + '</span>';
@@ -371,9 +391,36 @@
       return s;
     }
     html += tokGroup('命中风险库', '🚨', hitTokens, function (ti) { return ti.level || 'high'; });
+    html += tokGroup('已收录健康成分（点击下方查看说明）', '💚', knownHealth, function () { return 'health'; });
     html += tokGroup('普通成分（资料库未收录）', '✅', normalTokens, function () { return 'safe'; });
     html += tokGroup('已忽略（杂质/声明）', '🗑️', noiseTokens, function () { return 'noise'; });
     html += '</details>';
+
+    // 📖 健康成分说明（按 token 顺序去重展示）
+    if (knownHealth.length) {
+      var seen = {};
+      html += '<details style="margin-top:14px"><summary class="muted small" style="cursor:pointer;font-weight:600">📖 成分说明（' + knownHealth.length + ' 项）</summary>';
+      html += '<div style="margin-top:10px">';
+      knownHealth.forEach(function (ti) {
+        var e = ti.health;
+        if (seen[e.id]) return; seen[e.id] = true;
+        html += '<div class="health-card">';
+        html += '<div class="health-head">';
+        html += '<span class="health-name">' + esc(e.name) + '</span>';
+        html += '<span class="tag" style="background:#e8f5e9;color:#2e7d32;border-color:#a5d6a7">' + esc(e.category) + '</span>';
+        html += '</div>';
+        html += '<div class="health-desc">' + esc(e.desc) + '</div>';
+        if (e.benefits && e.benefits.length) {
+          html += '<div class="health-meta"><b>✅ 主要作用：</b>' + e.benefits.map(esc).join('；') + '</div>';
+        }
+        if (e.cautions) {
+          html += '<div class="health-meta"><b>⚠️ 注意事项：</b>' + esc(e.cautions) + '</div>';
+        }
+        html += '<div class="health-meta" style="color:var(--muted)"><b>来源：</b>' + esc(e.source) + '</div>';
+        html += '</div>';
+      });
+      html += '</div></details>';
+    }
 
     html += '<div class="save-panel">';
     html += '<h4>保存到「拍照记录」</h4>';

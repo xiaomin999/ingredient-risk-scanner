@@ -129,6 +129,16 @@ body{
 .tok.high{background:var(--high-bg);border-color:#f5c4c4;color:var(--high);font-weight:600}
 .tok.medium{background:var(--medium-bg);border-color:#ffd9a8;color:var(--medium);font-weight:600}
 .tok.low{background:var(--low-bg);border-color:#f3e2a8;color:#a67c00;font-weight:600}
+.tok.health{background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32;font-weight:600}
+.tok.noise{color:#bbb;text-decoration:line-through;background:#fafafa}
+
+/* 健康成分说明卡片 */
+.health-card{background:#f6fbf6;border:1px solid #d4ecd5;border-radius:12px;padding:12px 16px;margin-top:8px}
+.health-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.health-name{font-weight:700;font-size:14.5px;color:#1b5e20}
+.health-desc{font-size:13.5px;line-height:1.7;margin:4px 0}
+.health-meta{font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.6}
+.health-meta b{color:var(--text)}
 .tok.safe{color:var(--muted)}
 .tok.noise{color:#bbb;background:#f7f7f8;border-color:#eee;font-style:italic;text-decoration:line-through;text-decoration-color:#ddd}
 .tok-group-title{font-size:13px;font-weight:600;color:#444;margin-bottom:6px}
