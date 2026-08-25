@@ -174,17 +174,28 @@ body{
 .vlm-card code{background:#f3e9ff;padding:1px 6px;border-radius:4px;font-size:12.5px}
 
 @media(max-width:680px){
-  .sidebar{position:fixed;z-index:30;height:100vh;width:236px;max-width:78vw;box-shadow:0 0 30px rgba(0,0,0,.12);transform:translateX(-100%);transition:transform .22s ease}
-  .sidebar.collapsed{transform:translateX(-100%)}
-  .sidebar.open{transform:translateX(0)}
-  .sidebar-mask{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:25;opacity:0;pointer-events:none;transition:opacity .2s}
-  .sidebar-mask.show{opacity:1;pointer-events:auto}
-  .main{padding:14px 14px 24px}
+  /* 底部 tab 导航：把 sidebar 改成固定在底部的横向导航条 */
+  .sidebar{
+    position:fixed;left:0;right:0;bottom:0;top:auto;
+    width:100%;max-width:100%;height:auto;flex-direction:row;
+    padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));
+    border-right:none;border-top:1px solid var(--line);
+    box-shadow:0 -4px 18px rgba(0,0,0,.08);z-index:30;
+    transform:none;transition:none;align-items:stretch;
+  }
+  .sidebar.collapsed{width:100%}
+  .sidebar.collapsed .nav-label{display:block} /* 移动端始终显示文字 */
+  .brand{display:none}
+  .nav{flex-direction:row;margin-top:0;gap:2px;flex:1}
+  .nav-item{flex-direction:column;gap:2px;padding:7px 4px;border-radius:12px;font-size:11px;justify-content:center;align-items:center;flex:1}
+  .nav-ico{font-size:20px;width:auto;flex:0 0 auto}
+  .nav-label{font-size:11px;white-space:nowrap}
+  .collapse-btn{display:none}
+  .sidebar-mask{display:none}
+  .menu-fab{display:none}
+  .main{padding:14px 14px calc(78px + env(safe-area-inset-bottom,0px))}
   .lib-list{grid-template-columns:1fr}
   .menu-btn{display:inline-flex}
-  .menu-fab{display:flex}
-  .collapse-btn{display:none}
-}
 }
 
 /* ===== 总体判定条 ===== */
