@@ -1,0 +1,450 @@
+/*
+ * 风险成分数据库 (Risk Ingredient Database)
+ * 数据来源：央视 3·15 晚会及央视新闻曝光、国家卫健委 GB 2760-2024《食品安全国家标准 食品添加剂使用标准》、
+ *           《化妆品安全技术规范（2015）》、世界卫生组织(WHO)/国际癌症研究机构(IARC)、美国FDA、香港食物安全中心、
+ *           中国食品安全网、中国消费者报、各地市场监管通报（截至 2026-08）。
+ * 重要说明：本数据库用于科普与消费提示，非医疗/诊断依据。合规限量使用通常安全；风险主要源于
+ *           「非法添加 / 超量使用 / 特定敏感人群暴露」。请以产品实际标签与监管信息为准。
+ *
+ * 字段：
+ *  id        唯一标识
+ *  name      中文主名
+ *  aliases   别名/英文名/常见写法（用于 OCR 文本匹配）
+ *  category  适用场景标签：food=食品, skincare=护肤品, cosmetic=化妆品, contact=食品接触材料
+ *  type      分类（用于资料库筛选）
+ *  risk      风险等级：high(高风险/禁用) | medium(中风险/限用争议) | low(低风险/注意)
+ *  riskDesc  风险说明
+ *  sensitive 敏感/慎用人群
+ *  source    来源标注
+ */
+window.RISK_DB = [
+  /* ===================== 食品 - 非法添加物（高风险） ===================== */
+  {
+    id: "sudan-red", name: "苏丹红",
+    aliases: ["苏丹红","苏丹红Ⅰ","苏丹红I","苏丹红II","苏丹红Ⅲ","苏丹红Ⅳ","Sudan","Sudan I","Sudan Red","油溶黄","苏丹"],
+    category: ["food"], type: "非法添加物", risk: "high",
+    riskDesc: "工业染色剂，非食品添加剂。多国禁止用于食品。不法商贩常用于辣椒粉、红心蛋、底料等增色。动物实验显示有致癌性，长期摄入有健康风险。",
+    sensitive: ["所有人群"], source: "央视及多地质检抽检通报；GB 2760 严禁其作为食品添加剂使用。"
+  },
+  {
+    id: "melamine", name: "三聚氰胺",
+    aliases: ["三聚氰胺","Melamine","密胺","蛋白精"],
+    category: ["food"], type: "非法添加物", risk: "high",
+    riskDesc: "工业化工原料，严禁加入食品。曾被不法分子掺入奶粉/饲料虚高蛋白质检测值，可致泌尿系统结石、肾衰竭，对婴幼儿危害极大。",
+    sensitive: ["婴幼儿","所有人群"], source: "2008 年三鹿事件及后续专项整治；属明令禁止的非食用物质。"
+  },
+  {
+    id: "formalin", name: "甲醛（福尔马林）",
+    aliases: ["甲醛","福尔马林","Formaldehyde","Formol","吊白块残留"],
+    category: ["food"], type: "非法添加物", risk: "high",
+    riskDesc: "剧毒防腐剂，严禁用于食品。曾被用于泡发水产品、防腐增白。IARC 列为一类人类致癌物，刺激黏膜、损害肝肾、有致癌风险。",
+    sensitive: ["所有人群"], source: "《食品中可能违法添加的非食用物质名单》；IARC 一类致癌物。"
+  },
+  {
+    id: "boroax", name: "硼砂 / 硼酸",
+    aliases: ["硼砂","硼酸","Borax","Boric Acid","月石"],
+    category: ["food"], type: "非法添加物", risk: "high",
+    riskDesc: "明令禁止在食品中添加。曾被用于肉丸、粽子、面条增弹保水。成人中毒剂量约 1–3 克，可损害消化、神经、生殖系统，婴幼儿更敏感。",
+    sensitive: ["婴幼儿","所有人群"], source: "《食品中可能违法添加的非食用物质名单》。"
+  },
+  {
+    id: "bleaching-powder", name: "吊白块（甲醛次硫酸氢钠）",
+    aliases: ["吊白块","甲醛次硫酸氢钠","雕白块","Sodium Formaldehyde Sulfoxylate"],
+    category: ["food"], type: "非法添加物", risk: "high",
+    riskDesc: "工业漂白剂，严禁用于食品。曾被用于粉丝、米粉、腐竹增白，加热分解释放甲醛，有致癌风险。",
+    sensitive: ["所有人群"], source: "《食品中可能违法添加的非食用物质名单》。"
+  },
+  {
+    id: "industrial-h2o2", name: "工业过氧化氢（双氧水，非法使用）",
+    aliases: ["过氧化氢","双氧水","Hydrogen Peroxide","工业双氧水","过氧乙酸"],
+    category: ["food"], type: "非法添加物", risk: "high",
+    riskDesc: "2026 年央视 3·15 曝光：部分鸡爪、毛肚等使用工业级双氧水漂白。国家标准仅允许其作为特定工艺加工助剂，严禁用于鸡爪、毛肚等泡发干制品漂白。长期食用可损伤口腔黏膜、肝肾功能，超量可危及生命。",
+    sensitive: ["所有人群"], source: "2026 央视 3·15 晚会；GB 2760-2024；深圳市食药安办提示。"
+  },
+  {
+    id: "industrial-gelatin", name: "工业明胶",
+    aliases: ["工业明胶","明胶（工业级）","Industrial Gelatin"],
+    category: ["food"], type: "非法添加物", risk: "high",
+    riskDesc: "用皮革废料等制成，可能含重金属铬等毒物，严禁用于食品。曾被用于果冻、胶囊、糖果。",
+    sensitive: ["所有人群"], source: "食品安全专项整治通报；工业明胶不得用于食品接触。"
+  },
+  {
+    id: "plasticizer", name: "塑化剂（邻苯二甲酸酯，食品非法添加）",
+    aliases: ["塑化剂","邻苯二甲酸酯","DEHP","DBP","Dibutyl Phthalate","Di(2-ethylhexyl) Phthalate","起云剂","增塑剂"],
+    category: ["food","contact"], type: "非法添加物", risk: "high",
+    riskDesc: "环境激素，干扰内分泌。食品中起云剂掺入属违法，曾引发饮料塑化剂事件。长期暴露影响生殖发育。",
+    sensitive: ["儿童","孕妇","所有人群"], source: "2011 年台湾塑化剂事件及后续监管；属非法添加。"
+  },
+  {
+    id: "clenbuterol", name: "瘦肉精（克伦特罗等）",
+    aliases: ["瘦肉精","克伦特罗","Clenbuterol","莱克多巴胺","Ractopamine","沙丁胺醇"],
+    category: ["food"], type: "非法添加物", risk: "high",
+    riskDesc: "β-受体激动剂，严禁用于养殖供食动物。残留于肉类可致心悸、头晕、恶心，对高血压、心脏病患者危险。",
+    sensitive: ["心血管疾病患者","所有人群"], source: "《禁止在饲料和动物饮用水中使用的药物品种目录》。"
+  },
+  {
+    id: "malachite-green", name: "孔雀石绿",
+    aliases: ["孔雀石绿","Malachite Green","孔雀绿","碱性绿"],
+    category: ["food"], type: "非法添加物", risk: "high",
+    riskDesc: "水产杀菌染料，禁用。具有高残留、潜在致癌与致畸性，曾被用于活鱼运输保鲜。",
+    sensitive: ["所有人群"], source: "《食品动物禁用的兽药及其它化合物清单》。"
+  },
+  {
+    id: "potassium-bromate", name: "溴酸钾",
+    aliases: ["溴酸钾","Potassium Bromate","溴酸盐"],
+    category: ["food"], type: "非法添加物", risk: "high",
+    riskDesc: "曾用作面粉处理剂，因动物实验显示致癌性，我国已于 2005 年禁止使用于小麦粉。",
+    sensitive: ["所有人群"], source: "卫生部公告（2005）取消溴酸钾作为面粉处理剂。"
+  },
+  {
+    id: "lindane", name: "林丹 / 六六六（农药残留）",
+    aliases: ["林丹","六六六","Lindane","BHC","HCH","滴滴涕","DDT","有机氯农药"],
+    category: ["food"], type: "非法添加物", risk: "high",
+    riskDesc: "高残留有机氯农药，早已禁用。可在动植物体内蓄积，属持久性污染物，有神经毒性和内分泌干扰作用。",
+    sensitive: ["所有人群"], source: "《农药管理条例》及禁用农药清单。"
+  },
+  {
+    id: "des", name: "己烯雌酚",
+    aliases: ["己烯雌酚","Diethylstilbestrol","DES","乙烯雌酚"],
+    category: ["food"], type: "非法添加物", risk: "high",
+    riskDesc: "人工合成雌激素，严禁用于食品动物。曾被非法用于促生长，有致畸、致癌及内分泌干扰风险。",
+    sensitive: ["所有人群"], source: "《禁止在饲料和动物饮用水中使用的药物品种目录》。"
+  },
+  {
+    id: "industrial-sulfur", name: "工业硫磺（非法熏蒸漂白）",
+    aliases: ["工业硫磺","硫磺","Sulfur","二氧化硫熏蒸"],
+    category: ["food"], type: "非法添加物", risk: "high",
+    riskDesc: "违规用于笋干、银耳、生姜等熏蒸漂白，产生二氧化硫残留，刺激呼吸道、损害消化系统。食品用硫磺需符合食品级并限量。",
+    sensitive: ["哮喘患者","所有人群"], source: "食品安全抽检通报；食品级硫磺使用有严格限量。"
+  },
+  {
+    id: "gutter-oil", name: "地沟油 / 回收油",
+    aliases: ["地沟油","回收油","潲水油","重复煎炸油","劣质油"],
+    category: ["food"], type: "非法添加物", risk: "high",
+    riskDesc: "废弃油脂回流餐桌属违法。含黄曲霉毒素、苯并芘等强致癌物，反复煎炸产生反式脂肪与氧化物。",
+    sensitive: ["所有人群"], source: "食品安全法明令禁止；专项整治重点。"
+  },
+
+  /* ===================== 食品 - 限用/需控量添加剂（中风险） ===================== */
+  {
+    id: "nitrite", name: "亚硝酸盐 / 亚硝酸钠",
+    aliases: ["亚硝酸盐","亚硝酸钠","亚硝酸钾","Sodium Nitrite","硝酸钠","硝酸盐","Sodium Nitrate","护色剂"],
+    category: ["food"], type: "限用添加剂", risk: "medium",
+    riskDesc: "常用于加工肉制品护色防腐。过量摄入可干扰血氧运输（高铁血红蛋白血症）；在胃内可转化为亚硝胺（一类致癌物）。儿童、孕妇应少吃加工肉制品。",
+    sensitive: ["婴幼儿","孕妇","儿童"], source: "《生命时报》/美国儿科学会提示；GB 2760 对肉制品限量严格。"
+  },
+  {
+    id: "dehydroacetate", name: "脱氢乙酸钠（脱氢乙酸及其钠盐）",
+    aliases: ["脱氢乙酸钠","脱氢乙酸","Sodium Dehydroacetate","Dehydroacetic Acid","DHA"],
+    category: ["food"], type: "限用添加剂", risk: "medium",
+    riskDesc: "防腐剂。GB 2760-2024 已删除其在面包、糕点、焙烤馅料、淀粉制品、预制肉制品、果蔬汁等 7 类食品中的使用，腌渍蔬菜限量由 1g/kg 降至 0.3g/kg，2025-02-08 起实施。调整源于新安全评估与消费量增加。",
+    sensitive: ["儿童（烘焙消费量大）","所有人群"], source: "国家卫健委 GB 2760-2024；央视/光明网报道。"
+  },
+  {
+    id: "aspartame", name: "阿斯巴甜",
+    aliases: ["阿斯巴甜","Aspartame","阿司帕坦","甜味素","天门冬酰苯丙氨酸甲酯"],
+    category: ["food"], type: "甜味剂", risk: "medium",
+    riskDesc: "人工甜味剂。2023 年 WHO/IARC 将其列为 2B 类「可能对人类致癌」（证据有限）；JECFA 重申每日允许摄入量 40mg/kg 内安全。无糖饮料常见。建议适度、不过量。",
+    sensitive: ["苯丙酮尿症(PKU)患者禁用","所有人群（限量内安全）"], source: "WHO/IARC 2023-07-14；央视新闻/中新网报道。"
+  },
+  {
+    id: "trans-fat", name: "反式脂肪酸（氢化植物油等）",
+    aliases: ["反式脂肪酸","氢化植物油","部分氢化植物油","起酥油","人造奶油","植物奶油","植脂末","代可可脂","酥油","Trans Fat","Hydrogenated Oil"],
+    category: ["food"], type: "加工风险", risk: "medium",
+    riskDesc: "升高「坏」胆固醇、降低「好」胆固醇，增加心血管疾病风险。WHO 呼吁消除工业源反式脂肪，建议每日供能比 <1%（约 <2.2g）。常见于奶茶、蛋糕、饼干、油炸食品。",
+    sensitive: ["心血管疾病高风险人群","所有人群"], source: "WHO；央视新闻（2025 反式脂肪酸科普）；香港食物安全中心。"
+  },
+  {
+    id: "tartrazine", name: "柠檬黄（合成色素）",
+    aliases: ["柠檬黄","Tartrazine","酒石黄","E102","CI 19140"],
+    category: ["food"], type: "合成色素", risk: "medium",
+    riskDesc: "人工合成色素。合规限量使用总体安全，但过量可致过敏（皮疹、哮喘）；儿童过量摄入与注意力不集中、多动相关。肉制品中禁止使用。",
+    sensitive: ["儿童","哮喘/过敏者"], source: "GB 2760 使用范围与限量；岚山区/民乐县抽检通报；儿童健康提示。"
+  },
+  {
+    id: "sunset-yellow", name: "日落黄（合成色素）",
+    aliases: ["日落黄","Sunset Yellow","E110","CI 15985","晚霞黄"],
+    category: ["food"], type: "合成色素", risk: "medium",
+    riskDesc: "人工合成偶氮色素。过量摄入可引发过敏、腹泻，加重肝肾代谢负担；儿童长期过量与行为问题相关。肉制品中禁用。",
+    sensitive: ["儿童","过敏者"], source: "GB 2760；多地市场监管抽检通报（卤肉、馍馍违规添加）。"
+  },
+  {
+    id: "carmine", name: "胭脂红（合成色素）",
+    aliases: ["胭脂红","Carmine","E124","CI 16255","丽春红"],
+    category: ["food"], type: "合成色素", risk: "medium",
+    riskDesc: "人工合成偶氮色素。合规使用安全，但加工中可能受铅等污染；过量有潜在威胁，儿童长期过量或加重代谢负担。肉制品中禁用。",
+    sensitive: ["儿童","过敏者"], source: "GB 2760；饮料中最大使用量 0.05g/kg。"
+  },
+  {
+    id: "amaranth", name: "苋菜红（合成色素）",
+    aliases: ["苋菜红","Amaranth","E123","CI 16185"],
+    category: ["food"], type: "合成色素", risk: "medium",
+    riskDesc: "人工合成偶氮色素。长期大量摄入可加重肝肾代谢负担，影响儿童神经系统发育。肉制品中禁用。",
+    sensitive: ["儿童"], source: "GB 2760；岚山区市场监管提示。"
+  },
+  {
+    id: "allura-red", name: "诱惑红（合成色素）",
+    aliases: ["诱惑红","Allura Red","E129","CI 16035"],
+    category: ["food"], type: "合成色素", risk: "medium",
+    riskDesc: "人工合成偶氮色素。可能引发过敏、影响儿童行为。肉制品中限用/部分禁用。",
+    sensitive: ["儿童","过敏者"], source: "GB 2760 肉制品使用规定。"
+  },
+  {
+    id: "brilliant-blue", name: "亮蓝 / 靛蓝（合成色素）",
+    aliases: ["亮蓝","Brilliant Blue","E133","靛蓝","Indigo Carmine","E132"],
+    category: ["food"], type: "合成色素", risk: "medium",
+    riskDesc: "人工合成色素。合规使用安全，但儿童过量摄入有行为影响争议。部分肉制品禁用。",
+    sensitive: ["儿童"], source: "GB 2760 使用范围与限量。"
+  },
+  {
+    id: "saccharin", name: "糖精钠（糖精）",
+    aliases: ["糖精钠","糖精","Saccharin","Sodium Saccharin","邻磺酰苯甲酰亚胺"],
+    category: ["food"], type: "甜味剂", risk: "medium",
+    riskDesc: "最古老人工甜味剂。动物（大鼠）高剂量曾显示膀胱癌风险，机制被认为不适用于人；IARC 列为「未能分类」。部分国家限制儿童食品使用。",
+    sensitive: ["孕妇","儿童（部分国家限制）"], source: "IARC 第3组；美国 NCI 等评估；各国限量不同。"
+  },
+  {
+    id: "cyclamate", name: "甜蜜素（环己基氨基磺酸钠）",
+    aliases: ["甜蜜素","环己基氨基磺酸钠","Cyclamate","Sodium Cyclamate","环己胺磺酸钠"],
+    category: ["food"], type: "甜味剂", risk: "medium",
+    riskDesc: "人工甜味剂。美国 1969 年因动物膀胱癌风险禁用，我国等许多国家允许限量使用。代谢物环己胺在体内蓄积，建议适量。",
+    sensitive: ["所有人群（限量食用）"], source: "多国法规差异；IARC 第3组。"
+  },
+  {
+    id: "acesulfame", name: "安赛蜜（乙酰磺胺酸钾）",
+    aliases: ["安赛蜜","乙酰磺胺酸钾","Acesulfame Potassium","Ace-K","AK糖"],
+    category: ["food"], type: "甜味剂", risk: "medium",
+    riskDesc: "高倍人工甜味剂。《英国医学杂志》等研究提示长期高摄入与心脑血管事件风险上升相关；部分研究提示影响肠道菌群。标准内使用总体安全。",
+    sensitive: ["心血管疾病高风险人群"], source: "人民日报健康客户端；营养学研究综述。"
+  },
+  {
+    id: "sucralose", name: "三氯蔗糖",
+    aliases: ["三氯蔗糖","Sucralose","蔗糖素"],
+    category: ["food"], type: "甜味剂", risk: "medium",
+    riskDesc: "高倍人工甜味剂，耐热。部分研究发现可能促进葡萄糖摄取、炎症与脂肪形成，并影响肠道菌群；标准内使用被多国批准。",
+    sensitive: ["肠道菌群敏感者"], source: "香港食物安全中心；相关研究综述。"
+  },
+  {
+    id: "benzoic", name: "苯甲酸 / 苯甲酸钠",
+    aliases: ["苯甲酸","苯甲酸钠","Sodium Benzoate","Benzoic Acid","安息香酸"],
+    category: ["food"], type: "防腐剂", risk: "medium",
+    riskDesc: "常见防腐剂，合规使用安全。但与维生素 C 同存、加热可能产生微量苯（致癌）；高剂量或儿童大量摄入需留意。",
+    sensitive: ["儿童（大量时）","过敏者"], source: "GB 2760 限量；与维C反应生成苯的研究提示。"
+  },
+  {
+    id: "acrylamide", name: "丙烯酰胺（高温加工产物）",
+    aliases: ["丙烯酰胺","Acrylamide"],
+    category: ["food"], type: "加工风险", risk: "medium",
+    riskDesc: "淀粉类食品高温（>120℃）油炸/烘烤产生的污染物。IARC 列为 2A 类「可能对人类致癌」，主要风险来自薯条、薯片、咖啡、饼干等。",
+    sensitive: ["所有人群"], source: "IARC 2A 类；WHO/食品科学界提示减少高温油炸摄入。"
+  },
+  {
+    id: "caramel-color", name: "焦糖色素（4-甲基咪唑）",
+    aliases: ["焦糖色素","焦糖色","Caramel Color","4-MEI","氨法焦糖"],
+    category: ["food"], type: "合成色素", risk: "medium",
+    riskDesc: "可乐等深色饮料常用。部分工艺副产物 4-甲基咪唑(4-MEI)在动物实验中显示致癌性，部分国家对其限量。常规摄入风险较低。",
+    sensitive: ["所有人群（适量）"], source: "加州 65 提案对相关副产物设限；FDA 评估。"
+  },
+  {
+    id: "sulfite", name: "亚硫酸盐 / 二氧化硫（漂白防腐）",
+    aliases: ["亚硫酸盐","二氧化硫","Sulfite","Sulfur Dioxide","焦亚硫酸钠","亚硫酸氢钠"],
+    category: ["food"], type: "防腐剂", risk: "medium",
+    riskDesc: "用于蜜饯、干果、酒类漂白防腐。部分哮喘患者接触可诱发严重哮喘；少数人群过敏。",
+    sensitive: ["哮喘患者","过敏者"], source: "GB 2760 限量；哮喘人群警示。"
+  },
+  {
+    id: "hfcs", name: "果葡糖浆 / 高果糖浆（添加糖）",
+    aliases: ["果葡糖浆","高果糖浆","高果玉米糖浆","果葡糖浆","Fructose Syrup","Glucose Syrup","葡萄糖浆","麦芽糖浆"],
+    category: ["food"], type: "添加糖", risk: "medium",
+    riskDesc: "含糖饮料与加工食品常用。过量摄入与肥胖、2 型糖尿病、脂肪肝、心血管病相关。WHO 建议每日游离糖 <50g、最好 <25g。",
+    sensitive: ["糖尿病人群","所有人群（控量）"], source: "WHO 添加糖摄入建议；营养学界共识。"
+  },
+  {
+    id: "bpa", name: "双酚A（BPA，食品接触）",
+    aliases: ["双酚A","双酚","BPA","Bisphenol A","聚碳酸酯"],
+    category: ["contact","food"], type: "环境激素", risk: "medium",
+    riskDesc: "常见于罐头内壁涂层、塑料容器。环境激素，可干扰内分泌；酸性/高脂食物及加热易析出。我国对食品接触材料有严格管控。建议少用塑料盒微波加热。",
+    sensitive: ["孕妇","婴幼儿","所有人群"], source: "云南省疾控等科普；食品接触材料标准。"
+  },
+  {
+    id: "pfas", name: "PFAS / 全氟化合物（永久化学品）",
+    aliases: ["PFAS","全氟化合物","全氟辛酸","PFOA","全氟辛烷磺酸","PFOS","特氟龙","不粘涂层"],
+    category: ["contact","food"], type: "环境激素", risk: "medium",
+    riskDesc: "「永久化学品」，难降解、易在体内蓄积。可干扰甲状腺激素，与发育、代谢风险相关。常见于不粘锅涂层、防油食品包装。",
+    sensitive: ["儿童","孕妇","所有人群"], source: "环境健康研究；不粘锅涂层科普。"
+  },
+
+  /* ===================== 食品 - 低风险/注意 ===================== */
+  {
+    id: "sorbic", name: "山梨酸 / 山梨酸钾",
+    aliases: ["山梨酸","山梨酸钾","Potassium Sorbate","Sorbic Acid"],
+    category: ["food"], type: "防腐剂", risk: "low",
+    riskDesc: "广泛使用的防腐剂，安全性高，代谢为二氧化碳和水。极少过敏。合规使用基本无需担心。",
+    sensitive: ["极少数过敏者"], source: "GB 2760；国际权威机构评估安全。"
+  },
+  {
+    id: "propionate", name: "丙酸钙 / 丙酸钠",
+    aliases: ["丙酸钙","丙酸钠","Calcium Propionate","Sodium Propionate"],
+    category: ["food"], type: "防腐剂", risk: "low",
+    riskDesc: "面包等常用防霉剂，天然存在于某些奶酪。安全性高，适量摄入无碍。",
+    sensitive: ["所有人群（安全）"], source: "GB 2760；FDA 等评估。"
+  },
+  {
+    id: "msg", name: "味精 / 谷氨酸钠",
+    aliases: ["味精","谷氨酸钠","Monosodium Glutamate","MSG","味素"],
+    category: ["food"], type: "增味剂", risk: "low",
+    riskDesc: "常见增味剂。权威机构认定安全；少数「中餐综合症」敏感者大量空腹摄入可能出现短暂头痛、面红，通常无害。",
+    sensitive: ["敏感个体（少量）"], source: "FDA/EFSA 评估为 GRAS。"
+  },
+
+  /* ===================== 护肤/化妆品 - 禁用成分（高风险） ===================== */
+  {
+    id: "glucocorticoid", name: "糖皮质激素（化妆品非法添加）",
+    aliases: ["糖皮质激素","激素","地塞米松","氢化可的松","氯倍他索","丙酸氯倍他索","糠酸莫米松","激素依赖"],
+    category: ["skincare","cosmetic"], type: "化妆品禁用", risk: "high",
+    riskDesc: "我国《化妆品安全技术规范》禁止添加。违规「速效美白/祛斑」产品添加后短期见效，停用即反弹，长期致「激素脸」（激素依赖性皮炎），破坏皮肤屏障，损伤不可逆。2026 央视曝光多款网红面霜。",
+    sensitive: ["所有人群（非法添加）"], source: "《化妆品安全技术规范》；央视新闻 2026-08 曝光。"
+  },
+  {
+    id: "hydroquinone", name: "氢醌（对苯二酚）",
+    aliases: ["氢醌","对苯二酚","Hydroquinone","氢醌单苯醚","斑必治"],
+    category: ["skincare","cosmetic"], type: "化妆品禁用", risk: "high",
+    riskDesc: "强效美白剂，具细胞毒性。长期使用可引发外源性白斑病、褐黄病，损害肝、血液系统。我国化妆品中禁用；部分国家处方药可用。孕妇禁用（致畸风险）。",
+    sensitive: ["孕妇","所有人群（非法添加）"], source: "《化妆品安全技术规范》；多地疾控科普。"
+  },
+  {
+    id: "mercury", name: "汞 / 氯化氨基汞（化妆品非法添加）",
+    aliases: ["汞","氯化氨基汞","Mercury","氯化汞","水银","白降汞"],
+    category: ["skincare","cosmetic"], type: "化妆品禁用", risk: "high",
+    riskDesc: "非法添加于速效美白祛斑产品，可抑制黑色素。通过皮肤吸收蓄积，损害神经、肾脏，影响胎儿发育。国家限值极严（一般禁用）；曾有产品超标上千乃至上万倍案例。",
+    sensitive: ["孕妇","婴幼儿","所有人群"], source: "《化妆品安全技术规范》；国家药监局通告（检出禁用原料）。"
+  },
+  {
+    id: "lead-arsenic", name: "铅 / 砷等重金属（化妆品非法添加）",
+    aliases: ["铅","砷","Lead","Arsenic","铅白","砒霜"],
+    category: ["skincare","cosmetic"], type: "化妆品禁用", risk: "high",
+    riskDesc: "非法添加于廉价速效美白/祛斑产品。可在体内长期蓄积，损害神经、肾脏与造血系统，影响胎儿智力发育。正规产品严禁。",
+    sensitive: ["孕妇","婴幼儿","所有人群"], source: "《化妆品安全技术规范》；央视/药监局通报。"
+  },
+  {
+    id: "methanol-cos", name: "甲醇（化妆品有毒溶剂）",
+    aliases: ["甲醇","Methanol","木精","工业酒精"],
+    category: ["skincare","cosmetic"], type: "化妆品禁用", risk: "high",
+    riskDesc: "有毒有机溶剂，可被不法厂商加入化妆品。刺激皮肤/呼吸道/眼结膜，长期接触损害肝肾功能，甚至致盲、致命。",
+    sensitive: ["所有人群"], source: "《化妆品安全技术规范》禁用；化妆品安全科普。"
+  },
+  {
+    id: "diethylene-glycol", name: "二甘醇（化妆品有毒溶剂）",
+    aliases: ["二甘醇","Diethylene Glycol","DEG"],
+    category: ["skincare","cosmetic"], type: "化妆品禁用", risk: "high",
+    riskDesc: "工业溶剂，曾被用于劣质牙膏/化妆品替代甘油，可致急性肾衰竭、死亡。严禁作为化妆品原料。",
+    sensitive: ["所有人群"], source: "2007 年牙膏事件；化妆品安全规范。"
+  },
+  {
+    id: "fluorescent", name: "荧光增白剂（化妆品违规添加）",
+    aliases: ["荧光增白剂","荧光剂","Optical Brightener","二苯乙烯衍生物"],
+    category: ["skincare","cosmetic"], type: "化妆品禁用", risk: "high",
+    riskDesc: "不应添加于直接接触皮肤的化妆品。可迁移入皮肤，引起过敏、刺激，长期安全性存疑。部分「即时美白」面膜靠其制造假白。",
+    sensitive: ["敏感肌","所有人群"], source: "化妆品安全技术规范及监管提示。"
+  },
+
+  /* ===================== 护肤/化妆品 - 限用/争议（中风险） ===================== */
+  {
+    id: "formaldehyde-releaser", name: "甲醛释放体类防腐剂",
+    aliases: ["DMDM乙内酰脲","DMDM Hydantoin","咪唑烷基脲","Imidazolidinyl Urea","季铵盐-15","Quaternium-15","双咪唑烷基脲","甲醛释放","释放甲醛"],
+    category: ["skincare","cosmetic"], type: "化妆品限用", risk: "medium",
+    riskDesc: "缓慢释放甲醛防腐。甲醛为 IARC 一类人类致癌物；此类成分可致皮肤刺激与过敏（季铵盐-15 是主要过敏原之一）。日本、瑞典等已限制。",
+    sensitive: ["敏感肌","过敏者","所有人群"], source: "IARC 一类；化妆品安全技术规范有限量。"
+  },
+  {
+    id: "oxybenzone", name: "二苯酮-3（氧苯酮，化学防晒剂）",
+    aliases: ["二苯酮-3","氧苯酮","Oxybenzone","Benzophenone-3","BP-3"],
+    category: ["skincare","cosmetic"], type: "化妆品限用", risk: "medium",
+    riskDesc: "化学防晒剂，有内分泌干扰争议，可被皮肤吸收。孕妇及儿童建议优先选物理防晒（氧化锌/二氧化钛）。部分海域因珊瑚毒性受限。",
+    sensitive: ["孕妇","儿童","所有人群"], source: "孕妇护肤禁忌科普；内分泌干扰研究。"
+  },
+  {
+    id: "salicylic-acid", name: "水杨酸",
+    aliases: ["水杨酸","Salicylic Acid","BHA","β-羟基酸"],
+    category: ["skincare","cosmetic"], type: "化妆品限用", risk: "medium",
+    riskDesc: "祛痘/去角质常用。浓度 >2% 的驻留型产品孕妇慎用（潜在胎儿影响）；儿童大面积长期使用需谨慎。我国对其浓度与用途有限制。",
+    sensitive: ["孕妇","儿童","敏感肌"], source: "孕妇护肤指南；《化妆品安全技术规范》限量。"
+  },
+  {
+    id: "retinol", name: "视黄醇 / 维A类（ retinoid ）",
+    aliases: ["视黄醇","维A醇","维生素A","Retinol","视黄醛","Retinal","视黄醇棕榈酸酯","Retinyl Palmitate","维A酸","Tretinoin","阿达帕林"],
+    category: ["skincare","cosmetic"], type: "化妆品限用", risk: "medium",
+    riskDesc: "抗老/抗痘成分，经皮吸收后可致畸。孕妇禁用维A酸类；视黄醇类产品孕期也建议停用或遵医嘱。",
+    sensitive: ["孕妇","备孕女性"], source: "孕妇护肤禁忌科普；妇产科建议。"
+  },
+  {
+    id: "phthalate-cos", name: "邻苯二甲酸酯（化妆品增塑/香精固定）",
+    aliases: ["邻苯二甲酸酯","邻苯二甲酸二乙酯","DEP","Diethyl Phthalate","增塑剂","塑化剂"],
+    category: ["skincare","cosmetic"], type: "化妆品限用", risk: "medium",
+    riskDesc: "环境激素，常隐藏于香精中（成分表未必列出）。干扰内分泌，影响胎儿生殖系统发育；指甲油、香水含量较高。部分已被我国对所有化妆品禁用。",
+    sensitive: ["孕妇","儿童","所有人群"], source: "孕妇护肤指南；《化妆品安全技术规范》禁用部分邻苯二甲酸酯。"
+  },
+  {
+    id: "triclosan", name: "三氯生",
+    aliases: ["三氯生","Triclosan","三氯沙","玉洁新"],
+    category: ["skincare","cosmetic"], type: "化妆品限用", risk: "medium",
+    riskDesc: "抗菌剂。有内分泌干扰争议，并可能助长细菌耐药性；部分国家限制。我国对其在淋洗/驻留产品中有浓度限制。",
+    sensitive: ["所有人群（儿童慎用）"], source: "化妆品安全技术规范限量；FDA 对其在洗手液中使用的规定。"
+  },
+  {
+    id: "mit", name: "甲基异噻唑啉酮（MIT）/ 卡松",
+    aliases: ["甲基异噻唑啉酮","MIT","Methylisothiazolinone","甲基氯异噻唑啉酮","CMIT","卡松","Kathon"],
+    category: ["skincare","cosmetic"], type: "化妆品限用", risk: "medium",
+    riskDesc: "强力防腐剂，致敏性高，是接触性皮炎的主要过敏原之一。欧盟等对驻留型化妆品中 MIT 严格限制/禁用。",
+    sensitive: ["敏感肌","过敏者"], source: "皮肤科文献（接触性皮炎）；欧盟 SCCS 意见。"
+  },
+  {
+    id: "sls", name: "月桂醇硫酸钠 / SLES（SLS）",
+    aliases: ["月桂醇硫酸钠","SLS","Sodium Lauryl Sulfate","十二烷基硫酸钠","SLES","月桂醇聚醚硫酸酯钠"],
+    category: ["skincare","cosmetic"], type: "化妆品限用", risk: "medium",
+    riskDesc: "清洁表活，去脂力强。高浓度/长期可破坏皮肤屏障、致干涩刺激，尤其敏感肌。本身非禁用，但敏感人群宜选温和表活。",
+    sensitive: ["敏感肌","干性皮肤"], source: "皮肤科共识；非禁用但需配方适度。"
+  },
+  {
+    id: "talc-asbestos", name: "滑石粉（含石棉风险）",
+    aliases: ["滑石粉","Talc","Talcum Powder","爽身粉"],
+    category: ["cosmetic"], type: "化妆品限用", risk: "medium",
+    riskDesc: "用于散粉、爽身粉。天然滑石矿可能伴生石棉（一类致癌物）。用于会阴部与卵巢癌风险相关争议。应选用「无石棉」认证产品，避免吸入。",
+    sensitive: ["婴幼儿（爽身粉吸入风险）","所有人群"], source: "IARC 石棉一类；滑石粉安全争议。"
+  },
+  {
+    id: "mineral-oil", name: "矿物油 / 液体石蜡",
+    aliases: ["矿物油","液体石蜡","Mineral Oil","Paraffin","白油","凡士林(未精制)"],
+    category: ["skincare","cosmetic"], type: "化妆品限用", risk: "low",
+    riskDesc: "封闭保湿剂，精制后安全。但粗糙级矿物油可能含多环芳烃(PAHs)杂质，有致痘/污染顾虑；化妆品级应精炼达标。",
+    sensitive: ["痘肌（致痘顾虑）"], source: "化妆品安全技术规范（精制要求）。"
+  },
+  {
+    id: "fragrance", name: "香精 / 香料（ parfum ）",
+    aliases: ["香精","香料","Parfum","Fragrance","Perfume","精油(复方不明)"],
+    category: ["skincare","cosmetic"], type: "化妆品限用", risk: "low",
+    riskDesc: "常见致敏源，可隐藏多种未标注成分（含潜在邻苯二甲酸酯）。敏感肌、湿疹、孕妇建议选「无香精」配方。",
+    sensitive: ["敏感肌","湿疹","孕妇（建议无香）"], source: "安徽疾控/消费者报科普；过敏提示。"
+  },
+  {
+    id: "phenoxyethanol", name: "苯氧乙醇",
+    aliases: ["苯氧乙醇","Phenoxyethanol","苯氧基乙醇"],
+    category: ["skincare","cosmetic"], type: "化妆品限用", risk: "low",
+    riskDesc: "相对温和防腐剂，1% 内安全。婴幼儿产品需控制浓度；少数敏感者可能刺激。",
+    sensitive: ["婴幼儿（限浓度）","敏感肌"], source: "化妆品安全技术规范限量。"
+  },
+  {
+    id: "alcohol", name: "酒精 / 乙醇",
+    aliases: ["酒精","乙醇","Alcohol","Ethanol"," Alcohol Denat","变性乙醇"],
+    category: ["skincare","cosmetic"], type: "化妆品限用", risk: "low",
+    riskDesc: "溶剂/促渗，致敏低但去脂。敏感肌、屏障受损、孕妇（大量）建议避开含酒精产品，避免刺激与干燥。",
+    sensitive: ["敏感肌","孕妇（建议避开）"], source: "孕妇护肤科普；皮肤科建议。"
+  },
+  {
+    id: "parabens", name: "对羟基苯甲酸酯（尼泊金酯）",
+    aliases: ["对羟基苯甲酸酯","对羟基苯甲酸甲酯","对羟基苯甲酸乙酯","对羟基苯甲酸丙酯","对羟基苯甲酸丁酯","对羟基苯甲酸异丁酯","尼泊金酯","Parabens","羟苯甲酯","Methylparaben","羟苯乙酯","Ethylparaben","羟苯丙酯","Propylparaben","羟苯丁酯","Butylparaben","羟苯异丁酯","Isopropylparaben"],
+    category: ["skincare","cosmetic"], type: "化妆品限用", risk: "low",
+    riskDesc: "广泛使用的防腐剂。合规浓度（单酯≤0.4%、混合≤0.8%）安全；但有弱雌激素活性争议，长链（丙/丁酯）受限。敏感肌、孕妇、儿童建议优先「无 parabens」产品。",
+    sensitive: ["敏感肌","孕妇","儿童（建议避开）"], source: "《化妆品安全技术规范》限量；安徽疾控/消费者报科普。"
+  }
+];

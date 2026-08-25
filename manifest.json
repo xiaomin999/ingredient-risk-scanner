@@ -1,0 +1,14 @@
+{
+  "name": "配料表风险扫描",
+  "short_name": "成分哨兵",
+  "description": "拍照识别食品/护肤/化妆品配料表中的有害成分，标注风险等级与说明。",
+  "lang": "zh-CN",
+  "start_url": "index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f7fb",
+  "theme_color": "#7e57c2",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

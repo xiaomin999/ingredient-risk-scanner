@@ -1,0 +1,8 @@
+# 项目私有数据，绝不上传公开仓库
+.workbuddy/
+.trash/
+
+# 系统/依赖
+node_modules/
+.DS_Store
+Thumbs.db

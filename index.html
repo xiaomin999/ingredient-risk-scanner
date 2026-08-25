@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#7e57c2" />
+  <title>配料表风险扫描 · 拍照识别有害成分</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- 左侧可折叠导航 -->
+    <aside id="sidebar" class="sidebar">
+      <div class="brand">
+        <div class="brand-logo">🔍</div>
+        <div class="brand-text">
+          <div class="brand-name">配料表风险扫描</div>
+          <div class="brand-sub">食·妆安全眼</div>
+        </div>
+      </div>
+      <nav class="nav">
+        <button class="nav-item active" data-view="scan">
+          <span class="nav-ico">📷</span><span class="nav-label">拍照扫描</span>
+        </button>
+        <button class="nav-item" data-view="library">
+          <span class="nav-ico">📚</span><span class="nav-label">风险资料库</span>
+        </button>
+        <button class="nav-item" data-view="about">
+          <span class="nav-ico">ℹ️</span><span class="nav-label">关于与免责</span>
+        </button>
+      </nav>
+      <button id="collapseBtn" class="collapse-btn" title="折叠/展开导航">⟨</button>
+    </aside>
+
+    <!-- 主内容 -->
+    <main class="main">
+      <!-- ===== 拍照扫描 ===== -->
+      <section class="view active" id="view-scan">
+        <header class="view-head">
+          <h1>拍照识别配料表</h1>
+          <p class="muted">支持食品配料表、护肤品/化妆品成分表。拍照或上传图片自动识别，也可直接粘贴文字。</p>
+        </header>
+
+        <div class="card">
+          <div class="upload-row">
+            <label class="btn btn-primary file-btn">
+              📷 拍照 / 选择图片
+              <input type="file" id="fileInput" accept="image/*" capture="environment" hidden />
+            </label>
+            <button class="btn btn-ghost" id="sampleBtn">载入示例</button>
+            <button class="btn btn-ghost" id="clearBtn">清空</button>
+          </div>
+          <div id="imgWrap" class="img-wrap hidden">
+            <img id="preview" alt="配料表预览" />
+          </div>
+          <div id="ocrProgress" class="ocr-progress hidden">
+            <div class="bar"><div id="ocrBar" class="bar-fill"></div></div>
+            <div id="ocrText" class="muted small">正在识别…</div>
+          </div>
+          <textarea id="textInput" class="text-input" placeholder="识别结果会显示在这里；你也可以手动粘贴配料表 / 成分表文字，然后点击「开始分析」。"></textarea>
+          <div class="actions">
+            <button class="btn btn-primary" id="analyzeBtn">🔎 开始分析</button>
+            <span id="analyzeHint" class="muted small"></span>
+          </div>
+        </div>
+
+        <div id="resultArea"></div>
+      </section>
+
+      <!-- ===== 风险资料库 ===== -->
+      <section class="view" id="view-library">
+        <header class="view-head">
+          <h1>风险成分资料库</h1>
+          <p class="muted">汇总自央视 3·15 曝光、国家卫健委 GB 2760-2024、《化妆品安全技术规范》、WHO/IARC 等公开来源。</p>
+        </header>
+        <div class="card">
+          <div class="filters">
+            <div class="chip-group" id="catFilter">
+              <button class="chip active" data-cat="all">全部</button>
+              <button class="chip" data-cat="food">食品</button>
+              <button class="chip" data-cat="skincare">护肤品</button>
+              <button class="chip" data-cat="cosmetic">化妆品</button>
+              <button class="chip" data-cat="contact">食品接触</button>
+            </div>
+            <div class="chip-group" id="riskFilter">
+              <button class="chip active" data-risk="all">全部风险</button>
+              <button class="chip" data-risk="high">高风险</button>
+              <button class="chip" data-risk="medium">中风险</button>
+              <button class="chip" data-risk="low">低风险/注意</button>
+            </div>
+            <input type="search" id="libSearch" class="search-input" placeholder="搜索成分名 / 别名…" />
+          </div>
+          <div id="libList" class="lib-list"></div>
+        </div>
+      </section>
+
+      <!-- ===== 关于 ===== -->
+      <section class="view" id="view-about">
+        <header class="view-head">
+          <h1>关于与免责声明</h1>
+        </header>
+        <div class="card about">
+          <h3>这个工具能做什么</h3>
+          <p>它通过手机/电脑摄像头或相册获取配料表、成分表图片，利用本地 OCR 提取文字，再与一份「风险成分资料库」比对，把可能有害的成分高亮标注出来，并给出风险说明、敏感人群与来源出处。</p>
+
+          <h3>风险等级含义</h3>
+          <ul class="legend">
+            <li><span class="badge high">高风险</span> 法规明确禁用 / 属非法添加，或国际机构列为一类/明确致癌物。应尽量避免。</li>
+            <li><span class="badge medium">中风险</span> 限用添加剂、有争议或有条件风险（如超量、特定人群）。需注意控制与避开。</li>
+            <li><span class="badge low">低风险/注意</span> 合规使用总体安全，但敏感肌、孕妇、儿童等特定人群建议留意。</li>
+          </ul>
+
+          <h3>重要免责声明</h3>
+          <div class="disclaimer">
+            <p>1. 本工具为<strong>消费科普与提示</strong>，<strong>不构成医疗、诊断、法律或监管依据</strong>。任何健康决策请咨询专业医生或机构。</p>
+            <p>2. 多数食品添加剂在<strong>国家标准限量内合规使用是安全的</strong>；风险主要来自「非法添加 / 超量使用 / 特定敏感人群暴露」。</p>
+            <p>3. OCR 识别可能误识、漏识，尤其对细小印刷体；<strong>结果请以实物标签与官方信息为准</strong>。若识别异常，请手动粘贴文字复核。</p>
+            <p>4. 资料库为公开报道与法规的整理摘要（截至 2026-08），<strong>并非穷尽清单</strong>，且不保证实时更新。请以最新监管通报为准。</p>
+          </div>
+
+          <h3>数据来源</h3>
+          <ul class="src">
+            <li>央视 3·15 晚会及央视新闻（双氧水漂白鸡爪、网红面霜违规添加激素/汞、反式脂肪酸等）</li>
+            <li>国家卫健委《食品安全国家标准 食品添加剂使用标准》GB 2760-2024（脱氢乙酸钠等调整）</li>
+            <li>《化妆品安全技术规范（2015）》禁用/限用原料清单</li>
+            <li>世界卫生组织(WHO) / 国际癌症研究机构(IARC)（阿斯巴甜 2B、甲醛一类、丙烯酰胺 2A 等）</li>
+            <li>香港食物安全中心、中国食品安全网、中国消费者报、各地市场监管抽检通报</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
