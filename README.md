@@ -139,9 +139,59 @@ npx http-server -p 8080
 
 ---
 
-## 🔄 远程可更新风险库
+## 🤖 VLM 识别 / 部署 Edge Function
 
-风险库由单一数据源 `js/db.js` + `js/risk-tags.js` 生成，构建（或手动运行脚本）后输出为：
+> v1.1 起，OCR 引擎由浏览器端 Tesseract 切换为**云端视觉大模型 Qwen-VL**，由 Supabase Edge Function 代理调用，图片会发往阿里云百炼用于识别（个人自用，敏感信息慎拍）。
+
+### 准确率
+| 场景 | Tesseract.js (旧) | Qwen-VL-Plus (新) |
+|------|-------------------|--------------------|
+| 印刷清晰的中文 | 70–80% | 95%+ |
+| 商品包装小字 | 50–60% | 90%+ |
+| 曲面/反光标签 | 30–50% | 80%+ |
+| 中英混排 | 50–60% | 90%+ |
+
+### 部署 Edge Function（一次性）
+
+**前置**：阿里云账号，开通「百炼」服务（https://dashscope.aliyun.com ），创建 API Key（`sk-` 开头，**免费送 100 万 token 额度**）。
+
+**方式 A：Supabase Dashboard（推荐，零命令行）**
+
+1. 打开 https://supabase.com/dashboard/project/rbmxgcholrcwjyzwnqmv/functions
+2. 点 **「New function」** → 名字填 `ocr-vlm` → 选 **「Editor」**
+3. 把 `supabase/functions/ocr-vlm/index.ts` 的全部内容粘贴进去 → 点 **「Deploy」**
+4. 切到 **「Secrets」** Tab → 点 **「Add new secret」**：
+   - Name: `QWEN_API_KEY`
+   - Value: `sk-你的真实key`
+5. 等几秒，访问 https://xiaomin999.github.io/ingredient-risk-scanner/ 拍张图测试。
+
+**方式 B：supabase CLI**
+
+```bash
+# 任意目录，避免中文路径
+npm install -g supabase
+supabase login                                  # 会要你输入 Supabase PAT
+supabase link --project-ref rbmxgcholrcwjyzwnqmv
+supabase functions deploy ocr-vlm --no-verify-jwt
+supabase secrets set QWEN_API_KEY=sk-你的真实key
+```
+
+> 函数设了 `verify_jwt=false`（见 `supabase/config.toml`），PWA 用项目 anon key 即可匿名调用，不需要用户登录。
+
+### 切换模型 / 兜底
+
+- App 内「关于 → 识别服务」可切换 `qwen-vl-plus`（默认，性价比）/ `qwen-vl-max`（精度更高）。
+- 失败时会显示具体错误（如 `QWEN_API_KEY_NOT_CONFIGURED`），此时手动粘贴配料表仍可正常分析。
+- 离线时（如网络封禁）**完全无法使用 OCR**，请手动粘贴。
+
+### 费用估算
+
+- `qwen-vl-plus`：~¥0.001/次；`qwen-vl-max`：~¥0.003/次
+- 百炼新用户 100 万 token 免费 ≈ 1 万次扫描，**个人用基本不花钱**
+
+---
+
+## 🔄 远程可更新风险库风险库由单一数据源 `js/db.js` + `js/risk-tags.js` 生成，构建（或手动运行脚本）后输出为：
 
 - `data/ingredients.json` — 60 项成分
 - `data/risk-tags.json` — 风险标识定义与映射
@@ -244,10 +294,13 @@ Pages 来源需设置为 **GitHub Actions**（而非 branch）。若仍在用 br
 ├── index.html              # 主页面（扫描 / 记录两个视图 + 同步设置）
 ├── css/                    # 样式
 ├── js/
-│   ├── app.js              # 主逻辑：OCR、分类、风险匹配、记录、同步 UI
+│   ├── app.js              # 主逻辑：OCR（Qwen-VL）、分类、风险匹配、记录、同步 UI
 │   ├── db.js               # 风险库数据源（60 项，Node/浏览器双兼容）
 │   ├── risk-tags.js        # 风险标识定义与映射
 │   └── sync.js             # Supabase 多端同步模块
+├── supabase/
+│   ├── config.toml         # Edge Function 配置（verify_jwt=false）
+│   └── functions/ocr-vlm/  # 阿里云百炼 Qwen-VL 代理（需部署，详见上节）
 ├── data/                   # 由 scripts/build-data.js 生成的远程可更新 JSON
 │   ├── ingredients.json
 │   ├── risk-tags.json

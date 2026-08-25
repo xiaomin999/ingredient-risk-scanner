@@ -1,0 +1,7 @@
+# Supabase 项目本地配置（对应远端项目 rbmxgcholrcwjyzwnqmv）
+# 此文件控制 Edge Function 行为，部署时会和远端配置合并
+
+project_id = "rbmxgcholrcwjyzwnqmv"
+
+[functions.ocr-vlm]
+verify_jwt = false

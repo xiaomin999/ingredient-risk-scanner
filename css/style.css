@@ -142,6 +142,13 @@ body{
 .disclaimer{background:#fff8e1;border:1px solid #f3e2a8;border-radius:12px;padding:12px 16px}
 .disclaimer p{margin:6px 0;font-size:13.5px}
 
+/* ===== VLM 设置卡 ===== */
+.vlm-card{margin-top:8px;padding:12px 14px;border:1px dashed var(--line);border-radius:12px;background:#fafafe}
+.vlm-card .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0}
+.vlm-card .row label{font-size:13.5px}
+.vlm-select{padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:13.5px}
+.vlm-card code{background:#f3e9ff;padding:1px 6px;border-radius:4px;font-size:12.5px}
+
 @media(max-width:680px){
   .sidebar{position:fixed;z-index:30;height:100vh;box-shadow:0 0 30px rgba(0,0,0,.12)}
   .sidebar.collapsed{transform:translateX(0)}

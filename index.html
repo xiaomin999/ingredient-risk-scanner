@@ -188,12 +188,28 @@ create policy "anon_scan_all" on public.scan_records for all to anon using (true
             <li>世界卫生组织(WHO) / 国际癌症研究机构(IARC)（阿斯巴甜 2B、甲醛一类、丙烯酰胺 2A 等）</li>
             <li>香港食物安全中心、中国食品安全网、中国消费者报、各地市场监管抽检通报</li>
           </ul>
+
+          <h3>识别服务（OCR）</h3>
+          <p class="muted">v1.1 起，识别引擎由浏览器端 Tesseract 切换为云端视觉大模型（Qwen-VL），由 Supabase Edge Function 代理调用，图片会发往阿里云百炼用于识别。</p>
+          <div class="card-inner vlm-card">
+            <div class="row">
+              <label for="vlmModelSel">模型：</label>
+              <select id="vlmModelSel" class="vlm-select">
+                <option value="qwen-vl-plus">qwen-vl-plus（默认，¥0.001/次，性价比高）</option>
+                <option value="qwen-vl-max">qwen-vl-max（精度更高，¥0.003/次）</option>
+              </select>
+            </div>
+            <div class="row">
+              <label><input type="checkbox" id="vlmFallbackCb"> 识别失败时显示提示并允许手动粘贴</label>
+            </div>
+            <div class="small muted">识别端点：<code id="vlmEndpoint">…</code></div>
+            <div class="small muted">领 Key / 部署 Edge Function：见 README 「VLM 识别 / 部署 Edge Function」一节。</div>
+          </div>
         </div>
       </section>
     </main>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="js/db.js"></script>
   <script src="js/risk-tags.js"></script>
   <script src="js/sync.js"></script>

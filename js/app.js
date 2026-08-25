@@ -558,24 +558,87 @@
     runOCR(file);
   });
 
+  /* ---------- VLM OCR（Qwen-VL via Supabase Edge Function） ---------- */
+  var VLM_ENDPOINT = 'https://rbmxgcholrcwjyzwnqmv.supabase.co/functions/v1/ocr-vlm';
+  // 与 sync.js 共用同一 anon key（项目级公开 key，前端可见是 OK 的）
+  var VLM_ANON = (window.IRSSync && window.IRSSync.CFG && window.IRSSync.CFG.anon) || '';
+
+  function getVlmCfg() {
+    return {
+      model: localStorage.getItem('irs_vlm_model') || 'qwen-vl-plus',
+      fallback: localStorage.getItem('irs_vlm_fallback') === '1'
+    };
+  }
+  function setVlmCfg(patch) {
+    if (patch && patch.model) localStorage.setItem('irs_vlm_model', patch.model);
+    if (patch && typeof patch.fallback === 'boolean') localStorage.setItem('irs_vlm_fallback', patch.fallback ? '1' : '0');
+  }
+
+  // 压缩图片到长边 ≤ maxDim（默认 1600px），JPEG quality ≈ 0.82；返回 base64 dataURL
+  function compressImage(file, maxDim) {
+    maxDim = maxDim || 1600;
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      var url = URL.createObjectURL(file);
+      img.onload = function () {
+        try {
+          var w0 = img.naturalWidth, h0 = img.naturalHeight;
+          var scale = Math.min(1, maxDim / Math.max(w0, h0));
+          var w = Math.max(1, Math.round(w0 * scale));
+          var h = Math.max(1, Math.round(h0 * scale));
+          var c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          var ctx = c.getContext('2d');
+          // 白底，避免透明 PNG 转 JPEG 时变黑
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          var dataUrl = c.toDataURL('image/jpeg', 0.82);
+          URL.revokeObjectURL(url);
+          resolve(dataUrl);
+        } catch (e) { URL.revokeObjectURL(url); reject(e); }
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('图片读取失败')); };
+      img.src = url;
+    });
+  }
+
   function runOCR(file) {
-    if (typeof Tesseract === 'undefined') {
-      setProgress(1, 'OCR 组件未加载（可能离线）。请直接粘贴配料表文字后点击「开始分析」。');
-      return;
-    }
-    setProgress(0.02, '正在加载识别模型…');
-    Tesseract.recognize(file, 'chi_sim+eng', {
-      logger: function (m) {
-        if (m.status === 'recognizing text') setProgress(m.progress, '识别中… ' + Math.round(m.progress * 100) + '%');
-        else setProgress(0.05, '预处理：' + (m.status || ''));
+    setProgress(0.05, '正在压缩图片…');
+    compressImage(file, 1600).then(function (dataUrl) {
+      setProgress(0.2, '上传中…');
+      var cfg = getVlmCfg();
+      return fetch(VLM_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': VLM_ANON,
+          'Authorization': 'Bearer ' + VLM_ANON
+        },
+        body: JSON.stringify({ image: dataUrl, model: cfg.model })
+      });
+    }).then(function (resp) {
+      setProgress(0.55, '识别中（VLM ' + getVlmCfg().model + '）…');
+      return resp.json().then(function (j) { return { ok: resp.ok, status: resp.status, body: j }; });
+    }).then(function (r) {
+      if (!r.ok) {
+        var msg = (r.body && (r.body.error || r.body.detail)) || ('HTTP ' + r.status);
+        throw new Error(msg);
       }
-    }).then(function (res) {
-      var txt = res.data.text || '';
-      textInput.value = txt.trim();
-      setProgress(1, '识别完成，共 ' + txt.length + ' 字。可手动修正后点击「开始分析」。');
+      var txt = (r.body && r.body.text) || '';
+      textInput.value = String(txt).trim();
+      var ms = (r.body && r.body.latency_ms) ? '，耗时 ' + r.body.latency_ms + 'ms' : '';
+      setProgress(1, '识别完成，共 ' + txt.length + ' 字' + ms + '。可手动修正后点「开始分析」。');
       analyzeHint.textContent = '识别完成，可点「开始分析」。';
     }).catch(function (err) {
-      setProgress(1, '识别失败：' + (err && err.message ? err.message : err) + '。建议手动粘贴文字。');
+      var msg = (err && err.message) ? err.message : String(err);
+      if (/QWEN_API_KEY_NOT_CONFIGURED/.test(msg)) {
+        setProgress(1, '识别服务未配置：请在 Supabase 控制台 Project Settings → Edge Functions → Secrets 设置 QWEN_API_KEY。');
+      } else if (/IMAGE_TOO_LARGE/.test(msg)) {
+        setProgress(1, '图片过大，请拍近一些（建议长边 ≤ 1600px）。');
+      } else {
+        setProgress(1, '识别失败：' + msg + '。请手动粘贴文字。');
+      }
     });
   }
 
@@ -668,6 +731,28 @@
     });
   }
   loadRemoteDB();
+
+  /* ---------- VLM 设置（关于页） ---------- */
+  function initVlmUI() {
+    var sel = document.getElementById('vlmModelSel');
+    var fb = document.getElementById('vlmFallbackCb');
+    var epEl = document.getElementById('vlmEndpoint');
+    if (epEl) epEl.textContent = VLM_ENDPOINT.replace(/^https?:\/\//, '');
+    if (sel) {
+      sel.value = getVlmCfg().model;
+      sel.addEventListener('change', function () {
+        setVlmCfg({ model: sel.value });
+        analyzeHint.textContent = '已切换识别模型为 ' + sel.value + '，下次拍照生效。';
+      });
+    }
+    if (fb) {
+      fb.checked = getVlmCfg().fallback;
+      fb.addEventListener('change', function () {
+        setVlmCfg({ fallback: fb.checked });
+      });
+    }
+  }
+  initVlmUI();
 
   /* ---------- PWA Service Worker ---------- */
   if ('serviceWorker' in navigator) {
