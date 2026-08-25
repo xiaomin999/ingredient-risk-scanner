@@ -1004,8 +1004,27 @@
 
   /* ---------- PWA Service Worker ---------- */
   if ('serviceWorker' in navigator) {
+    // 新 sw 接管后自动刷新一次，确保拿到最新缓存（避免卡在旧版本）
+    var _swReloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (_swReloading) return;
+      _swReloading = true;
+      window.location.reload();
+    });
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register('sw.js').catch(function () {});
+      navigator.serviceWorker.register('sw.js').then(function (reg) {
+        // 若已有等待中的新版 sw，立即激活它
+        if (reg.waiting) reg.waiting.postMessage('skipWaiting');
+        reg.addEventListener('updatefound', function () {
+          var nw = reg.installing;
+          if (!nw) return;
+          nw.addEventListener('statechange', function () {
+            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+              nw.postMessage('skipWaiting');
+            }
+          });
+        });
+      }).catch(function () {});
     });
   }
 })();
