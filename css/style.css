@@ -118,6 +118,8 @@ body{
 .tok.medium{background:var(--medium-bg);border-color:#ffd9a8;color:var(--medium);font-weight:600}
 .tok.low{background:var(--low-bg);border-color:#f3e2a8;color:#a67c00;font-weight:600}
 .tok.safe{color:var(--muted)}
+.tok.noise{color:#bbb;background:#f7f7f8;border-color:#eee;font-style:italic;text-decoration:line-through;text-decoration-color:#ddd}
+.tok-group-title{font-size:13px;font-weight:600;color:#444;margin-bottom:6px}
 .disclaimer-mini{font-size:12px;color:var(--muted);margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
 
 /* ===== 资料库 ===== */

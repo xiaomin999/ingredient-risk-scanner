@@ -51,6 +51,19 @@
     return parts.map(function (p) { return p.trim(); }).filter(Boolean);
   }
 
+  // 杂质判定：数字、百分号、CFU/含量声明、菌种说明等非"成分"项
+  function isNoiseToken(t) {
+    if (!t) return true;
+    if (t.length === 1) return true;  // 单字符
+    if (/^[\d.\s×x×^0-9eE+\-]+$/.test(t)) return true;  // 纯数字/科学计数法
+    if (/[<>≤≥%]/.test(t)) return true;  // 含比较符/百分号
+    if (/(CFU|cfu|千卡|kcal|mg\/|kg|毫升)/i.test(t)) return true;
+    if (/^(添加量|含量|未检出|活菌数|产品类型|风味发酵|保质期|净含量|出厂|符合|国家标准|生产|贮藏|条件|温度|参考|产品|国标|gb|配料|表|依据|第一法|第二法|第三法)/.test(t)) return true;
+    if (/^(g|kg|ml|克|千克|毫克|微克|升|毫升)(\/|每|／)/.test(t)) return true;
+    if (/(检测方法|测定|检验|国标|食品添加剂|使用标准|标?准)/.test(t)) return true;
+    return false;
+  }
+
   // 某条目对「单个 token」的最佳命中长度（最长别名优先，避免短别名误命中）
   function bestAliasLenForToken(entry, tok) {
     var tk = norm(tok);
@@ -182,10 +195,16 @@
     matched.sort(function (a, b) { return RISK_ORDER[a.risk] - RISK_ORDER[b.risk]; });
 
     var tokInfo = tokens.map(function (t) {
-      return { t: t, level: tokenBest[t] ? tokenBest[t].risk : null };
+      var bestE = tokenBest[t] || null;
+      return {
+        t: t,
+        level: bestE ? bestE.risk : null,
+        entry: bestE,
+        isNoise: !bestE && isNoiseToken(t)
+      };
     });
 
-    currentResult = { raw: raw, matched: matched, totalTokens: tokens.length };
+    currentResult = { raw: raw, matched: matched, totalTokens: tokens.length, tokInfo: tokInfo };
     renderResult(currentResult, tokInfo);
     resultArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -242,13 +261,39 @@
       });
     }
 
-    html += '<details style="margin-top:14px"><summary class="muted small" style="cursor:pointer">查看全部识别成分（' + totalTokens + ' 项）</summary>';
-    html += '<div class="tokens" style="margin-top:10px">';
-    tokInfo.forEach(function (ti) {
-      var cls = ti.level ? ti.level : 'safe';
-      html += '<span class="tok ' + cls + '">' + esc(ti.t) + '</span>';
-    });
-    html += '</div></details>';
+    // 三组分类统计
+    var hitTokens = tokInfo.filter(function (ti) { return ti.level; });
+    var normalTokens = tokInfo.filter(function (ti) { return !ti.level && !ti.isNoise; });
+    var noiseTokens = tokInfo.filter(function (ti) { return ti.isNoise; });
+
+    html += '<details open style="margin-top:14px"><summary class="muted small" style="cursor:pointer;font-weight:600">查看识别成分明细（' + totalTokens + ' 项）</summary>';
+    html += '<div class="muted small" style="margin:8px 0 10px;line-height:1.7">';
+    html += '共识别 <b>' + totalTokens + '</b> 项，其中：';
+    html += '<b style="color:var(--high)">' + hitTokens.length + '</b> 项命中风险库（高 ' + h + ' / 中 ' + m + ' / 低 ' + l + '），';
+    html += '<b style="color:var(--muted)">' + normalTokens.length + '</b> 项为普通成分（资料库未收录，默认安全），';
+    html += '<b style="color:#bbb">' + noiseTokens.length + '</b> 项已忽略（数字/含量/单位等杂质）。';
+    html += '</div>';
+
+    function tokGroup(title, icon, arr, levelFn) {
+      if (!arr.length) return '';
+      var s = '<div class="tok-group" style="margin-top:10px">';
+      s += '<div class="tok-group-title">' + icon + ' ' + title + ' <span class="muted">（' + arr.length + '）</span></div>';
+      s += '<div class="tokens">';
+      arr.forEach(function (ti) {
+        var cls = levelFn(ti);
+        var tip = '';
+        if (ti.entry) tip = ' title="命中：' + esc(ti.entry.name) + '（' + riskName(ti.entry.risk) + '）"';
+        else if (ti.isNoise) tip = ' title="已忽略：数字 / 含量声明 / 单位等非成分项"';
+        else tip = ' title="普通成分：资料库未收录此成分"';
+        s += '<span class="tok ' + cls + '"' + tip + '>' + esc(ti.t) + '</span>';
+      });
+      s += '</div></div>';
+      return s;
+    }
+    html += tokGroup('命中风险库', '🚨', hitTokens, function (ti) { return ti.level || 'high'; });
+    html += tokGroup('普通成分（资料库未收录）', '✅', normalTokens, function () { return 'safe'; });
+    html += tokGroup('已忽略（杂质/声明）', '🗑️', noiseTokens, function () { return 'noise'; });
+    html += '</details>';
 
     html += '<div class="save-panel">';
     html += '<h4>保存到「拍照记录」</h4>';
