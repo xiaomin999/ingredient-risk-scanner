@@ -17,7 +17,8 @@
  *  sensitive 敏感/慎用人群
  *  source    来源标注
  */
-window.RISK_DB = [
+var root = (typeof window !== 'undefined') ? window : (typeof globalThis !== 'undefined' ? globalThis : this);
+root.RISK_DB = [
   /* ===================== 食品 - 非法添加物（高风险） ===================== */
   {
     id: "sudan-red", name: "苏丹红",
@@ -448,3 +449,7 @@ window.RISK_DB = [
     sensitive: ["敏感肌","孕妇","儿童（建议避开）"], source: "《化妆品安全技术规范》限量；安徽疾控/消费者报科普。"
   }
 ];
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { RISK_DB: root.RISK_DB };
+}

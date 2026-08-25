@@ -44,6 +44,7 @@
         <header class="view-head">
           <h1>拍照识别配料表</h1>
           <p class="muted">支持食品配料表、护肤品/化妆品成分表。拍照或上传图片自动识别，也可直接粘贴文字。</p>
+          <div id="dbStatus" class="db-status"></div>
         </header>
 
         <div class="card">
@@ -103,8 +104,41 @@
       <section class="view" id="view-records">
         <header class="view-head">
           <h1>拍照记录</h1>
-          <p class="muted">自动收录你扫描过的产品，按分类展示。数据仅保存在你本机浏览器，不上传任何服务器。</p>
+          <p class="muted">自动收录你扫描过的产品，按分类展示。开启「多端同步」后，记录会通过你的 Supabase 在手机/电脑间共享。</p>
         </header>
+
+        <div class="card sync-card">
+          <div class="sync-bar">
+            <label class="switch">
+              <input type="checkbox" id="syncToggle" />
+              <span class="switch-slider"></span>
+              <span class="switch-label">多端同步（Supabase）</span>
+            </label>
+            <button class="btn-mini" id="syncNowBtn">立即同步</button>
+            <span id="syncStatus" class="sync-status"></span>
+          </div>
+          <div id="syncConfig" class="sync-config hidden">
+            <p>同步空间 ID：<code id="syncSpaceText">（未设置）</code>
+              <button class="btn-mini" id="syncCopyBtn">复制</button>
+            </p>
+            <p class="muted small">在另一台设备用<strong>相同「同步空间 ID」</strong>即可共享同一批记录。首次开启会自动生成一串随机 ID，请妥善保存/复制。</p>
+            <details class="sql-box">
+              <summary>首次使用需先在 Supabase 建表（点开复制 SQL）</summary>
+              <pre id="sqlBlock">-- 在你的 Supabase 项目 SQL Editor 执行一次：
+create table if not exists public.scan_records (
+  id text primary key,
+  space_key text not null,
+  data jsonb not null,
+  updated_at timestamptz not null default now()
+);
+create index if not exists scan_records_space_idx on public.scan_records (space_key);
+alter table public.scan_records enable row level security;
+drop policy if exists "anon_scan_all" on public.scan_records;
+create policy "anon_scan_all" on public.scan_records for all to anon using (true) with check (true);</pre>
+            </details>
+          </div>
+        </div>
+
         <div class="card">
           <div class="chip-group" id="recFilter">
             <button class="chip active" data-cat="all">全部</button>
@@ -162,6 +196,7 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="js/db.js"></script>
   <script src="js/risk-tags.js"></script>
+  <script src="js/sync.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

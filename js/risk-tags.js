@@ -6,7 +6,8 @@
  * window.RISK_TAGS   标识定义（顺序即展示顺序）：id -> {label, icon, color, desc}
  * window.RISK_TAG_MAP 成分 id -> 该成分归属的标识 id 数组（可 1~2 个）
  */
-window.RISK_TAGS = {
+var root = (typeof window !== 'undefined') ? window : (typeof globalThis !== 'undefined' ? globalThis : this);
+root.RISK_TAGS = {
   illegal:     { label: "非法添加", icon: "🚫", color: "#e53935", desc: "法规明令禁止用于该品类，属违法添加物。" },
   carcinogen:  { label: "致癌风险", icon: "☢️", color: "#c2185b", desc: "WHO/IARC 等权威机构列为致癌或疑似致癌物。" },
   hormone:     { label: "激素干扰", icon: "💉", color: "#9c27b0", desc: "糖皮质激素 / 环境雌激素，干扰内分泌系统。" },
@@ -18,7 +19,7 @@ window.RISK_TAGS = {
   irritant:    { label: "刺激致敏", icon: "🔥", color: "#f9a825", desc: "刺激皮肤 / 黏膜或易引发敏感反应。" }
 };
 
-window.RISK_TAG_MAP = {
+root.RISK_TAG_MAP = {
   /* 食品 - 非法添加物 */
   "sudan-red": ["illegal", "carcinogen"],
   "melamine": ["illegal"],
@@ -85,3 +86,7 @@ window.RISK_TAG_MAP = {
   "alcohol": ["irritant"],
   "parabens": ["hormone"]
 };
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { RISK_TAGS: root.RISK_TAGS, RISK_TAG_MAP: root.RISK_TAG_MAP };
+}

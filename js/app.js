@@ -52,8 +52,6 @@
   }
 
   // 某条目对「单个 token」的最佳命中长度（最长别名优先，避免短别名误命中）
-  // 中文：仅「token 包含别名」方向（反向前向），避免「水」误命中「双氧水」等常见字反向包含
-  // 拉丁：要求 token 精确等于别名（防英文碎片误命中）
   function bestAliasLenForToken(entry, tok) {
     var tk = norm(tok);
     if (!tk) return 0;
@@ -106,7 +104,6 @@
   function tagsOf(entry) { return TAG_MAP[entry.id] || []; }
 
   /* ---------- 自动分类 / 命名 ---------- */
-  // 分类：取命中成分中出现最多的适用场景；若出现并列最多（如食品+护肤混扫），归为未分类让用户自选
   function deriveCategory(matched) {
     if (!matched.length) return 'unknown';
     var cnt = {};
@@ -120,7 +117,6 @@
     });
     return maxC.length === 1 ? maxC[0] : 'unknown';
   }
-  // 名称：取 OCR 首行作为候选（可编辑），否则「未命名产品」
   function deriveName(raw) {
     var lines = (raw || '').split(/\n/).map(function (l) { return l.trim(); }).filter(Boolean);
     var first = lines[0] || '';
@@ -146,7 +142,6 @@
     matched.forEach(function (e) { if (RISK_ORDER[e.risk] < RISK_ORDER[v]) v = e.risk; });
     return v;
   }
-  // 按 RISK_TAGS 顺序渲染徽章
   function renderRiskBadges(summary) {
     var keys = Object.keys(TAGS);
     var parts = [];
@@ -170,7 +165,6 @@
     var searchText = norm(raw);
     var tokens = tokenize(raw);
 
-    // 每个 token 取其「最长别名命中」的条目（特定物质优先于短碎片）
     var tokenBest = {};
     tokens.forEach(function (t) {
       var bestE = null, bestLen = 0;
@@ -181,14 +175,12 @@
       if (bestE) tokenBest[t] = bestE;
     });
 
-    // 汇总命中条目：token 最佳命中 + 全文本拉丁连续命中
     var matchedMap = {};
     tokens.forEach(function (t) { if (tokenBest[t]) matchedMap[tokenBest[t].id] = tokenBest[t]; });
     DB.forEach(function (e) { if (entryMatchedByFullTextLatin(e, searchText)) matchedMap[e.id] = e; });
     var matched = Object.keys(matchedMap).map(function (id) { return matchedMap[id]; });
     matched.sort(function (a, b) { return RISK_ORDER[a.risk] - RISK_ORDER[b.risk]; });
 
-    // token 着色
     var tokInfo = tokens.map(function (t) {
       return { t: t, level: tokenBest[t] ? tokenBest[t].risk : null };
     });
@@ -210,20 +202,17 @@
     var html = '';
     html += '<div class="card">';
 
-    // 总状态
     html += '<div class="verdict-bar v-' + verdict + '">' +
       '<span class="vb-ico">' + (verdict === 'safe' ? '✅' : (verdict === 'high' ? '🔴' : (verdict === 'medium' ? '🟠' : '🟡'))) + '</span>' +
       '<span class="vb-text">总体判定：<b>' + verdictName(verdict) + '</b></span>' +
       '<span class="vb-sub">共识别 ' + totalTokens + ' 项成分</span></div>';
 
-    // 概览
     html += '<div class="summary">';
     html += '<span class="sum-pill h">高风险 <b>' + h + '</b></span>';
     html += '<span class="sum-pill m">中风险 <b>' + m + '</b></span>';
     html += '<span class="sum-pill l">低风险/注意 <b>' + l + '</b></span>';
     html += '</div>';
 
-    // 横幅
     if (h > 0) {
       html += '<div class="banner danger">⚠️ 检出 ' + h + ' 项高风险成分（多为法规禁用/非法添加）。建议谨慎选择，必要时停用并向监管部门核实。</div>';
     } else if (m > 0) {
@@ -234,10 +223,8 @@
       html += '<div class="banner ok">✅ 未在资料库中检出风险成分。仍建议结合官方信息综合判断（资料库非穷尽）。</div>';
     }
 
-    // 风险标识徽章
     html += '<div class="risk-badges"><div class="rb-title">风险标识</div>' + renderRiskBadges(summary) + '</div>';
 
-    // 风险卡片
     if (matched.length) {
       matched.forEach(function (e) {
         var catLabel = e.category.map(catName).join(' / ');
@@ -255,7 +242,6 @@
       });
     }
 
-    // 识别成分云
     html += '<details style="margin-top:14px"><summary class="muted small" style="cursor:pointer">查看全部识别成分（' + totalTokens + ' 项）</summary>';
     html += '<div class="tokens" style="margin-top:10px">';
     tokInfo.forEach(function (ti) {
@@ -264,7 +250,6 @@
     });
     html += '</div></details>';
 
-    // 保存为记录
     html += '<div class="save-panel">';
     html += '<h4>保存到「拍照记录」</h4>';
     html += '<div class="save-row">';
@@ -288,14 +273,13 @@
 
     resultArea.innerHTML = html;
 
-    // 绑定保存面板
     var rn = document.getElementById('recName'); if (rn) rn.value = deriveName(res.raw);
     var rc = document.getElementById('recCat'); if (rc) rc.value = deriveCategory(matched);
     var sb = document.getElementById('saveRecBtn');
     if (sb) sb.addEventListener('click', saveRecord);
   }
 
-  /* ---------- 拍照记录 ---------- */
+  /* ---------- 拍照记录（本地 + Supabase 多端同步） ---------- */
   var REC_KEY = 'irs_records';
   function loadRecords() { try { return JSON.parse(localStorage.getItem(REC_KEY)) || []; } catch (e) { return []; } }
   function saveRecords(arr) {
@@ -321,6 +305,7 @@
     return {
       id: 'r' + Date.now() + Math.random().toString(36).slice(2, 6),
       ts: new Date().toISOString(),
+      updated_at: Date.now(),
       name: name,
       category: cat,
       verdict: verdictOf(currentResult ? currentResult.matched : []),
@@ -329,7 +314,8 @@
         return { id: e.id, name: e.name, risk: e.risk, tags: tagsOf(e), type: e.type };
       }),
       thumb: null,
-      source: source
+      source: source,
+      deleted: false
     };
   }
   function saveRecord() {
@@ -343,6 +329,31 @@
       var arr = loadRecords(); arr.unshift(rec); saveRecords(arr);
       var hint = document.getElementById('saveHint');
       if (hint) hint.textContent = '已保存 ✓ 可在「拍照记录」查看';
+      pushRecordToSync(rec);
+    });
+  }
+
+  // 删除：用「墓碑」标记 deleted=true 并同步，确保跨设备也能删除
+  function deleteRecord(id) {
+    var arr = loadRecords();
+    var rec = arr.filter(function (r) { return r.id === id; })[0];
+    if (rec) {
+      rec.deleted = true;
+      rec.updated_at = Date.now();
+      saveRecords(arr);
+      if (window.IRSSync) {
+        var cfg = window.IRSSync.getCfg();
+        if (cfg.enabled && cfg.space) window.IRSSync.push([rec]).catch(function () {});
+      }
+    }
+  }
+
+  function pushRecordToSync(rec) {
+    if (!window.IRSSync) return;
+    var cfg = window.IRSSync.getCfg();
+    if (!cfg.enabled || !cfg.space) return;
+    window.IRSSync.push([rec]).catch(function (e) {
+      setSyncStatus('同步推送失败：' + (e && e.message ? e.message : e), false);
     });
   }
 
@@ -402,7 +413,7 @@
   }
 
   function renderRecords(filter) {
-    var arr = loadRecords();
+    var arr = loadRecords().filter(function (r) { return !r.deleted; });
     var box = document.getElementById('recList');
     if (!box) return;
     if (!arr.length) {
@@ -424,12 +435,6 @@
     box.innerHTML = html;
   }
 
-  function deleteRecord(id) {
-    var arr = loadRecords().filter(function (r) { return r.id !== id; });
-    saveRecords(arr);
-  }
-
-  // 事件委托：详情 / 删除
   var recListEl = document.getElementById('recList');
   if (recListEl) {
     recListEl.addEventListener('click', function (ev) {
@@ -465,6 +470,60 @@
     });
   }
 
+  /* ---------- 多端同步 UI ---------- */
+  function setSyncStatus(text, ok) {
+    var el = document.getElementById('syncStatus');
+    if (el) { el.textContent = text; el.className = 'sync-status' + (ok === true ? ' ok' : (ok === false ? ' err' : '')); }
+  }
+  function syncNow() {
+    if (!window.IRSSync) { setSyncStatus('同步模块未加载', false); return; }
+    var cfg = window.IRSSync.getCfg();
+    if (!cfg.enabled || !cfg.space) { setSyncStatus('未启用或缺少同步空间', false); return; }
+    window.IRSSync.sync(loadRecords, saveRecords, setSyncStatus).then(function () {
+      renderRecords(curRecFilter);
+    }).catch(function () {});
+  }
+  function initSyncUI() {
+    var toggle = document.getElementById('syncToggle');
+    var spaceText = document.getElementById('syncSpaceText');
+    var configBox = document.getElementById('syncConfig');
+    var cfg = (window.IRSSync && window.IRSSync.getCfg) ? window.IRSSync.getCfg() : { enabled: false, space: '' };
+    if (toggle) toggle.checked = cfg.enabled;
+    if (spaceText) spaceText.textContent = cfg.space || '（未设置）';
+    if (configBox) configBox.classList.toggle('hidden', !cfg.enabled);
+    if (cfg.enabled) syncNow();
+    else setSyncStatus('同步已关闭');
+  }
+
+  var syncToggle = document.getElementById('syncToggle');
+  if (syncToggle) {
+    syncToggle.addEventListener('change', function () {
+      var on = syncToggle.checked;
+      localStorage.setItem('irs_sync_on', on ? '1' : '0');
+      var configBox = document.getElementById('syncConfig');
+      if (configBox) configBox.classList.toggle('hidden', !on);
+      if (on) {
+        var space = localStorage.getItem('irs_sync_space');
+        if (!space) {
+          space = 'irs_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+          localStorage.setItem('irs_sync_space', space);
+        }
+        var spaceText = document.getElementById('syncSpaceText');
+        if (spaceText) spaceText.textContent = space;
+        syncNow();
+      } else {
+        setSyncStatus('同步已关闭');
+      }
+    });
+  }
+  var syncNowBtn = document.getElementById('syncNowBtn');
+  if (syncNowBtn) syncNowBtn.addEventListener('click', syncNow);
+  var syncCopyBtn = document.getElementById('syncCopyBtn');
+  if (syncCopyBtn) syncCopyBtn.addEventListener('click', function () {
+    var s = localStorage.getItem('irs_sync_space') || '';
+    if (s && navigator.clipboard) navigator.clipboard.writeText(s);
+  });
+
   /* ---------- 风险标识图例（关于页） ---------- */
   (function renderTagLegend() {
     var box = document.getElementById('tagLegend');
@@ -493,7 +552,6 @@
     var url = URL.createObjectURL(file);
     preview.src = url;
     imgWrap.classList.remove('hidden');
-    // 保存原图 dataURL 用于记录缩略图
     var reader = new FileReader();
     reader.onload = function () { lastPhotoDataUrl = reader.result; };
     reader.readAsDataURL(file);
@@ -580,6 +638,36 @@
     libState.q = this.value; renderLibrary();
   });
   renderLibrary();
+
+  /* ---------- 远程成分库（可更新）：优先拉取 data/*.json，失败回退内置 ---------- */
+  var dbStatusEl = document.getElementById('dbStatus');
+  function setDbStatus(text, ok) {
+    if (!dbStatusEl) return;
+    dbStatusEl.textContent = text;
+    dbStatusEl.className = 'db-status' + (ok === true ? ' ok' : (ok === false ? ' err' : ''));
+  }
+  function loadRemoteDB() {
+    setDbStatus('正在同步最新成分库…');
+    var noStore = { cache: 'no-store' };
+    Promise.all([
+      fetch('data/ingredients.json', noStore).then(function (r) { return r.json(); })
+        .then(function (d) { if (Array.isArray(d) && d.length) DB = d; })
+        .catch(function () { DB = window.RISK_DB || DB; }),
+      fetch('data/risk-tags.json', noStore).then(function (r) { return r.json(); })
+        .then(function (d) { if (d && d.tags) TAGS = d.tags; if (d && d.map) TAG_MAP = d.map; })
+        .catch(function () { TAGS = window.RISK_TAGS || TAGS; TAG_MAP = window.RISK_TAG_MAP || TAG_MAP; })
+    ]).then(function () {
+      try { renderLibrary(); } catch (e) {}
+      fetch('data/db-version.json', noStore).then(function (r) { return r.json(); }).then(function (v) {
+        setDbStatus('成分库已同步（更新于 ' + (v.updated || v.version || '最新') + '）', true);
+      }).catch(function () { setDbStatus('使用内置成分库（离线）', true); });
+      initSyncUI();
+    }).catch(function () {
+      setDbStatus('使用内置成分库（离线）', true);
+      initSyncUI();
+    });
+  }
+  loadRemoteDB();
 
   /* ---------- PWA Service Worker ---------- */
   if ('serviceWorker' in navigator) {
