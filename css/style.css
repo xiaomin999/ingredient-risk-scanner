@@ -231,6 +231,17 @@ body{
 .btn-mini:hover{background:#f6f6fb}
 .btn-mini.danger{color:var(--high);border-color:#f5c4c4}
 .btn-mini.danger:hover{background:var(--high-bg)}
+
+/* 同步区 */
+.sync-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.sync-config{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
+.sync-config code{background:#f3f0fb;padding:3px 8px;border-radius:6px;font-size:13px;color:var(--accent)}
+.sync-input-row{display:flex;gap:8px;align-items:center;margin:8px 0 4px;flex-wrap:wrap}
+.sync-input{flex:1;min-width:200px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;font:13px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--text);background:#fff;outline:none}
+.sync-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.sync-status{font-size:12.5px;color:var(--muted);margin-left:auto}
+.sync-status.ok{color:var(--safe)}
+.sync-status.err{color:var(--high)}
 .rec-detail{border-top:1px solid var(--line);padding:10px 14px;background:#fafafe}
 .rd-item{border-bottom:1px dashed var(--line);padding:8px 0}
 .rd-item:last-child{border-bottom:none}

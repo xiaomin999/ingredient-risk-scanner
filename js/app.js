@@ -691,9 +691,85 @@
   var syncNowBtn = document.getElementById('syncNowBtn');
   if (syncNowBtn) syncNowBtn.addEventListener('click', syncNow);
   var syncCopyBtn = document.getElementById('syncCopyBtn');
+  var syncCopyTip = document.getElementById('syncCopyTip');
+  function copyToClipboard(text) {
+    // 优先用 Clipboard API（HTTPS / localhost 下可用）；不支持时降级到 execCommand
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text);
+    }
+    return new Promise(function (resolve, reject) {
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        ta.style.top = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        ta.setSelectionRange(0, ta.value.length);
+        var ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        ok ? resolve() : reject(new Error('execCommand 返回 false'));
+      } catch (e) { reject(e); }
+    });
+  }
+  function flashTip(el, msg, ok) {
+    if (!el) return;
+    el.textContent = msg;
+    el.style.color = ok ? 'var(--safe)' : 'var(--high)';
+    clearTimeout(el._t);
+    el._t = setTimeout(function () {
+      el.textContent = '';
+      el.style.color = '';
+    }, 3000);
+  }
   if (syncCopyBtn) syncCopyBtn.addEventListener('click', function () {
     var s = localStorage.getItem('irs_sync_space') || '';
-    if (s && navigator.clipboard) navigator.clipboard.writeText(s);
+    if (!s) { flashTip(syncCopyTip, '还没有同步码可复制', false); return; }
+    copyToClipboard(s).then(function () {
+      flashTip(syncCopyTip, '✓ 已复制', true);
+    }).catch(function (e) {
+      // 终极降级：直接选中输入框让用户手动 Cmd/Ctrl+C
+      var spaceText = document.getElementById('syncSpaceText');
+      if (spaceText) {
+        var range = document.createRange();
+        range.selectNodeContents(spaceText);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+      flashTip(syncCopyTip, '复制失败，请按 Ctrl/⌘+C 复制', false);
+    });
+  });
+  // 「应用同步码」：把输入框的 ID 写进 localStorage 并立即同步
+  var syncApplyBtn = document.getElementById('syncApplyBtn');
+  var syncSpaceInput = document.getElementById('syncSpaceInput');
+  var syncApplyTip = document.getElementById('syncApplyTip');
+  if (syncApplyBtn) syncApplyBtn.addEventListener('click', function () {
+    if (!syncSpaceInput) return;
+    var v = (syncSpaceInput.value || '').trim();
+    if (!v) { flashTip(syncApplyTip, '请先粘贴一个同步码', false); return; }
+    // 简单校验：长度、字符集
+    if (!/^[A-Za-z0-9_\-]{6,64}$/.test(v)) {
+      flashTip(syncApplyTip, '格式不对（6~64 位字母/数字/_-）', false);
+      return;
+    }
+    localStorage.setItem('irs_sync_space', v);
+    // 如果还没开同步，自动打开
+    var toggle = document.getElementById('syncToggle');
+    if (toggle && !toggle.checked) {
+      toggle.checked = true;
+      localStorage.setItem('irs_sync_on', '1');
+    }
+    var spaceText = document.getElementById('syncSpaceText');
+    if (spaceText) spaceText.textContent = v;
+    flashTip(syncApplyTip, '✓ 已应用，正在同步…', true);
+    syncNow();
+  });
+  // 输入框按回车也能应用
+  if (syncSpaceInput) syncSpaceInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); if (syncApplyBtn) syncApplyBtn.click(); }
   });
 
   /* ---------- 风险标识图例（关于页） ---------- */

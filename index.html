@@ -125,9 +125,15 @@
           </div>
           <div id="syncConfig" class="sync-config hidden">
             <p>同步空间 ID：<code id="syncSpaceText">（未设置）</code>
-              <button class="btn-mini" id="syncCopyBtn">复制</button>
+              <button class="btn-mini" id="syncCopyBtn" title="把同步码复制到剪贴板">复制</button>
+              <span id="syncCopyTip" class="muted small"></span>
             </p>
             <p class="muted small">在另一台设备用<strong>相同「同步空间 ID」</strong>即可共享同一批记录。首次开启会自动生成一串随机 ID，请妥善保存/复制。</p>
+            <div class="sync-input-row">
+              <input type="text" id="syncSpaceInput" class="sync-input" placeholder="粘贴另一台设备上的同步空间 ID" autocomplete="off" spellcheck="false" />
+              <button class="btn-mini" id="syncApplyBtn" title="使用填写的同步码替换本机的同步空间">应用同步码</button>
+            </div>
+            <p id="syncApplyTip" class="muted small"></p>
             <details class="sql-box">
               <summary>首次使用需先在 Supabase 建表（点开复制 SQL）</summary>
               <pre id="sqlBlock">-- 在你的 Supabase 项目 SQL Editor 执行一次：

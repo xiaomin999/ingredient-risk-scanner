@@ -1,7 +1,7 @@
 /* 离线缓存：缓存应用外壳；data/ 下为远程可更新成分库，走网络优先以保证更新即时生效 */
-var CACHE = 'cr-shell-v4';
+var CACHE = 'cr-shell-v5';
 var ASSETS = [
-  'index.html', 'css/style.css', 'js/app.js', 'js/db.js', 'js/risk-tags.js', 'js/sync.js',
+  'index.html', 'css/style.css', 'js/app.js', 'js/db.js', 'js/risk-tags.js', 'js/sync.js', 'js/health-ingredients.js',
   'manifest.json', 'icon.svg',
   'data/ingredients.json', 'data/risk-tags.json', 'data/db-version.json'
 ];
