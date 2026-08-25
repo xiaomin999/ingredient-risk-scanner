@@ -51,6 +51,18 @@ body{
 }
 .sidebar.collapsed .collapse-btn{transform:rotate(180deg);align-self:center}
 
+/* 移动端：抽屉遮罩（默认在桌面端隐藏） */
+.sidebar-mask{display:none}
+.menu-btn{display:none}
+/* 移动端：浮动在主区左下角的快速入口（FAB） */
+.menu-fab{
+  display:none;position:fixed;left:14px;bottom:18px;z-index:20;
+  width:46px;height:46px;border-radius:50%;border:none;
+  background:var(--accent);color:#fff;font-size:22px;line-height:1;
+  box-shadow:0 6px 18px rgba(0,0,0,.18);cursor:pointer;align-items:center;justify-content:center;
+}
+.menu-fab:active{transform:scale(.96)}
+
 /* ===== 主内容 ===== */
 .main{flex:1;min-width:0;padding:26px clamp(16px,4vw,46px);max-width:1100px}
 .view{display:none}
@@ -152,10 +164,17 @@ body{
 .vlm-card code{background:#f3e9ff;padding:1px 6px;border-radius:4px;font-size:12.5px}
 
 @media(max-width:680px){
-  .sidebar{position:fixed;z-index:30;height:100vh;box-shadow:0 0 30px rgba(0,0,0,.12)}
-  .sidebar.collapsed{transform:translateX(0)}
-  .main{padding:18px 14px}
+  .sidebar{position:fixed;z-index:30;height:100vh;width:236px;max-width:78vw;box-shadow:0 0 30px rgba(0,0,0,.12);transform:translateX(-100%);transition:transform .22s ease}
+  .sidebar.collapsed{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .sidebar-mask{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:25;opacity:0;pointer-events:none;transition:opacity .2s}
+  .sidebar-mask.show{opacity:1;pointer-events:auto}
+  .main{padding:14px 14px 24px}
   .lib-list{grid-template-columns:1fr}
+  .menu-btn{display:inline-flex}
+  .menu-fab{display:flex}
+  .collapse-btn{display:none}
+}
 }
 
 /* ===== 总体判定条 ===== */

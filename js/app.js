@@ -7,17 +7,31 @@
 
   /* ---------- 导航 / 折叠 ---------- */
   var sidebar = document.getElementById('sidebar');
+  var menuFab = document.getElementById('menuFab');
+  var sidebarMask = document.getElementById('sidebarMask');
+  var isMobile = function () { return window.matchMedia('(max-width:680px)').matches; };
+
   document.getElementById('collapseBtn').addEventListener('click', function () {
+    // 桌面端：折叠/展开 72px 图标条
     sidebar.classList.toggle('collapsed');
     try { localStorage.setItem('cr_sidebar_collapsed', sidebar.classList.contains('collapsed') ? '1' : '0'); } catch (e) {}
   });
   try { if (localStorage.getItem('cr_sidebar_collapsed') === '1') sidebar.classList.add('collapsed'); } catch (e) {}
+
+  // 移动端：抽屉式开/关
+  function openSidebarMobile() { sidebar.classList.add('open'); sidebarMask.classList.add('show'); }
+  function closeSidebarMobile() { sidebar.classList.remove('open'); sidebarMask.classList.remove('show'); }
+  if (menuFab) menuFab.addEventListener('click', function () {
+    if (sidebar.classList.contains('open')) closeSidebarMobile(); else openSidebarMobile();
+  });
+  if (sidebarMask) sidebarMask.addEventListener('click', closeSidebarMobile);
 
   var navItems = document.querySelectorAll('.nav-item');
   navItems.forEach(function (btn) {
     btn.addEventListener('click', function () {
       var view = btn.getAttribute('data-view');
       navItems.forEach(function (b) { b.classList.toggle('active', b === btn); });
+      if (isMobile()) closeSidebarMobile();
       document.querySelectorAll('.view').forEach(function (v) {
         v.classList.toggle('active', v.id === 'view-' + view);
       });
