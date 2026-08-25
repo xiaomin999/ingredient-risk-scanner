@@ -171,12 +171,69 @@
   }
 
   /* ---------- 分析 ---------- */
+  // 配料段截取：避免把「地址、公司名、生产许可证、宣传语」混入识别结果
+  // 起点：第一个"配料"/"配料表"/"成分"/"原辅料"/"原辅材料"
+  // 终点：以下任一最早出现：
+  //   公司类：有限公司/股份有限公司/集团/分公司/合作社/厂商/制造商
+  //   地址类：X省/X市/X区/X县 + X号/路/街/道/巷；邮编；邮政
+  //   许可证类：食品生产许可证/生产许可证/许可证编号/SC+数字
+  //   委托/受托/经销商
+  //   宣传类：国家队/代言人/形象大使/助威/活动
+  //   联系方式：服务热线/客服/电话/网址/www./http
+  //   法规类：执行标准/产品标准号/GB/T 数字
+  function extractIngredientsSection(raw) {
+    var text = (raw || '').replace(/\r/g, '');
+    // 1) 找起点（"配料"或"成分"等）
+    var startMatch = text.match(/(配料表?|成分表?|原辅材料?|原辅料|原?料|原料与辅料)\s*[:：]?/);
+    var startIdx = startMatch ? startMatch.index + startMatch[0].length : 0;
+    // 2) 在起点之后找最早的"非配料"结束点
+    var tail = text.slice(startIdx);
+    // 边界候选：所有可能命中"非配料段开始"的正则
+    var stoppers = [
+      // 公司/厂商
+      /(有限公司|股份|集团|分公司|合作社|厂商|制造商|生产商)/,
+      // 地址：XX省/市 + XX 号
+      /[〇零一二三四五六七八九十百千万\d]{0,3}\s*(省|自治区|特别行政区|市|区|县|盟|州|旗|镇|乡|村)\s*[〇零一二三四五六七八九十百千万\dA-Za-z]{0,20}\s*(号|路|街|道|巷)\b/,
+      // 邮编
+      /(邮编|邮政编码)\s*[：:]?\s*\d{4,8}/,
+      // 许可证
+      /(食品生产许可证|生产许可证|许可证编号|生产许可|SC)\s*[：:]?\s*[A-Z0-9]{2,}/,
+      // 委托/经销商
+      /(受托方|委托方|经销商|代理商|经销商|^经销)[:：]/m,
+      // 宣传
+      /(国家队|代言人|形象大使|冠名|助威|队?)[:：,\s]?(运动员|教练|体操队|游泳队|乒乓队|羽队|足队|篮球队|赛车队|自行车队|花样游泳队|击剑|帆船队|赛艇队|跆拳道|皮划艇队)/,
+      // 联系方式
+      /(服务热线|客服|咨询电话|售后服务|投诉举报|官方网址|官方微信|官方旗舰店|网址|www\.|https?:\/\/)/,
+      // 法规
+      /(执行标准|产品标准号|产品标准|国标号)\s*[：:]?\s*GB/,
+      // 储存/运输条件
+      /(贮存条件|储存条件|存放条件|运输条件|贮藏方法|温湿度)/,
+      // 第二段开头常见的"营养成分"
+      /(营养成分表)/
+    ];
+    var earliest = -1, earliestLen = 0;
+    stoppers.forEach(function (re) {
+      var mt = tail.match(re);
+      if (mt && (earliest === -1 || mt.index < earliest)) {
+        earliest = mt.index;
+        earliestLen = mt[0].length;
+      }
+    });
+    if (earliest === -1) {
+      // 没找到结束点：fallback 用整段
+      return { section: text.substring(startIdx), trimmed: false, startFound: !!startMatch };
+    }
+    return { section: tail.substring(0, earliest).trim(), trimmed: true, startFound: !!startMatch };
+  }
+
   function analyze() {
     var raw = textInput.value.trim();
     if (!raw) { analyzeHint.textContent = '请先拍照识别或粘贴配料表文字。'; return; }
     analyzeHint.textContent = '';
-    var searchText = norm(raw);
-    var tokens = tokenize(raw);
+    // 先截取"配料段"，避免地址/公司/许可证/宣传语被误识别成成分
+    var seg = extractIngredientsSection(raw);
+    var searchText = norm(seg.section);
+    var tokens = tokenize(seg.section);
 
     var tokenBest = {};
     tokens.forEach(function (t) {
@@ -204,7 +261,7 @@
       };
     });
 
-    currentResult = { raw: raw, matched: matched, totalTokens: tokens.length, tokInfo: tokInfo };
+    currentResult = { raw: raw, matched: matched, totalTokens: tokens.length, tokInfo: tokInfo, section: seg };
     renderResult(currentResult, tokInfo);
     resultArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -220,6 +277,15 @@
 
     var html = '';
     html += '<div class="card">';
+
+    // 配料段截取提示
+    if (res.section && res.section.trimmed) {
+      html += '<div class="muted small" style="margin-bottom:8px;padding:6px 10px;background:#f5f7fa;border-radius:8px">✂️ 已自动从「配料」段开始截取，并剔除了公司、地址、生产许可证、宣传语等无关文本。如识别有偏差，可点击下方查看原始识别文本。</div>';
+    } else if (res.section && res.section.startFound) {
+      html += '<div class="muted small" style="margin-bottom:8px;padding:6px 10px;background:#f5f7fa;border-radius:8px">✅ 已从「配料」段开始识别（自动避开前方的公司/地址/许可证/宣传语）。</div>';
+    } else {
+      html += '<div class="muted small" style="margin-bottom:8px;padding:6px 10px;background:#fff8e1;border-radius:8px;border:1px solid #f3e2a8">⚠️ 未检测到「配料/成分/原辅料」开头，已分析全部文本。如有大量成分被误判，可手动在文本框开头加"配料："后重新分析。</div>';
+    }
 
     html += '<div class="verdict-bar v-' + verdict + '">' +
       '<span class="vb-ico">' + (verdict === 'safe' ? '✅' : (verdict === 'high' ? '🔴' : (verdict === 'medium' ? '🟠' : '🟡'))) + '</span>' +
