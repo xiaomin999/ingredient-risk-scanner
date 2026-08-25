@@ -27,6 +27,9 @@
         <button class="nav-item" data-view="library">
           <span class="nav-ico">📚</span><span class="nav-label">风险资料库</span>
         </button>
+        <button class="nav-item" data-view="records">
+          <span class="nav-ico">🗂️</span><span class="nav-label">拍照记录</span>
+        </button>
         <button class="nav-item" data-view="about">
           <span class="nav-ico">ℹ️</span><span class="nav-label">关于与免责</span>
         </button>
@@ -96,6 +99,25 @@
         </div>
       </section>
 
+      <!-- ===== 拍照记录 ===== -->
+      <section class="view" id="view-records">
+        <header class="view-head">
+          <h1>拍照记录</h1>
+          <p class="muted">自动收录你扫描过的产品，按分类展示。数据仅保存在你本机浏览器，不上传任何服务器。</p>
+        </header>
+        <div class="card">
+          <div class="chip-group" id="recFilter">
+            <button class="chip active" data-cat="all">全部</button>
+            <button class="chip" data-cat="food">食品</button>
+            <button class="chip" data-cat="skincare">护肤品</button>
+            <button class="chip" data-cat="cosmetic">化妆品</button>
+            <button class="chip" data-cat="contact">食品接触</button>
+            <button class="chip" data-cat="unknown">未分类</button>
+          </div>
+          <div id="recList" class="rec-list"></div>
+        </div>
+      </section>
+
       <!-- ===== 关于 ===== -->
       <section class="view" id="view-about">
         <header class="view-head">
@@ -111,6 +133,10 @@
             <li><span class="badge medium">中风险</span> 限用添加剂、有争议或有条件风险（如超量、特定人群）。需注意控制与避开。</li>
             <li><span class="badge low">低风险/注意</span> 合规使用总体安全，但敏感肌、孕妇、儿童等特定人群建议留意。</li>
           </ul>
+
+          <h3>风险标识说明</h3>
+          <p class="muted">识别结果里，除了「高/中/低」风险等级，还会用以下 9 种「危害性质」标识徽章，说明成分主要的风险类型：</p>
+          <div id="tagLegend" class="tag-legend"></div>
 
           <h3>重要免责声明</h3>
           <div class="disclaimer">
@@ -135,6 +161,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="js/db.js"></script>
+  <script src="js/risk-tags.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

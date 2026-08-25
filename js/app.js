@@ -2,6 +2,8 @@
 (function () {
   'use strict';
   var DB = window.RISK_DB || [];
+  var TAGS = window.RISK_TAGS || {};
+  var TAG_MAP = window.RISK_TAG_MAP || {};
 
   /* ---------- 导航 / 折叠 ---------- */
   var sidebar = document.getElementById('sidebar');
@@ -20,6 +22,7 @@
         v.classList.toggle('active', v.id === 'view-' + view);
       });
       window.scrollTo(0, 0);
+      if (view === 'records') renderRecords(curRecFilter);
     });
   });
 
@@ -34,6 +37,10 @@
   var analyzeBtn = document.getElementById('analyzeBtn');
   var analyzeHint = document.getElementById('analyzeHint');
   var resultArea = document.getElementById('resultArea');
+
+  var lastPhotoDataUrl = null;   // 最近一次拍照的图片 dataURL（用于保存记录缩略图）
+  var currentResult = null;      // 当前分析结果 {raw, matched, totalTokens}
+  var curRecFilter = 'all';
 
   /* ---------- 工具：归一化 ---------- */
   function norm(s) { return (s || '').toLowerCase().replace(/\s+/g, ''); }
@@ -76,6 +83,85 @@
 
   var RISK_ORDER = { high: 0, medium: 1, low: 2 };
 
+  function catName(c) {
+    return { food: '食品', skincare: '护肤品', cosmetic: '化妆品', contact: '食品接触', unknown: '未分类' }[c] || c;
+  }
+  function riskName(r) { return { high: '高风险', medium: '中风险', low: '低风险/注意' }[r] || r; }
+  function verdictName(v) { return { high: '高风险', medium: '注意', low: '低风险', safe: '安全' }[v] || v; }
+
+  function esc(s) {
+    return (s || '').replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  function hexA(hex, a) {
+    var h = (hex || '#000').replace('#', '');
+    var r = parseInt(h.substr(0, 2), 16), g = parseInt(h.substr(2, 2), 16), b = parseInt(h.substr(4, 2), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+  }
+  function badgeStyle(color) {
+    return 'color:' + color + ';border-color:' + color + ';background:' + hexA(color, 0.12) + ';';
+  }
+  function tagsOf(entry) { return TAG_MAP[entry.id] || []; }
+
+  /* ---------- 自动分类 / 命名 ---------- */
+  // 分类：取命中成分中出现最多的适用场景；若出现并列最多（如食品+护肤混扫），归为未分类让用户自选
+  function deriveCategory(matched) {
+    if (!matched.length) return 'unknown';
+    var cnt = {};
+    matched.forEach(function (e) {
+      (e.category || []).forEach(function (c) { cnt[c] = (cnt[c] || 0) + 1; });
+    });
+    var max = 0, maxC = [];
+    Object.keys(cnt).forEach(function (c) {
+      if (cnt[c] > max) { max = cnt[c]; maxC = [c]; }
+      else if (cnt[c] === max) { maxC.push(c); }
+    });
+    return maxC.length === 1 ? maxC[0] : 'unknown';
+  }
+  // 名称：取 OCR 首行作为候选（可编辑），否则「未命名产品」
+  function deriveName(raw) {
+    var lines = (raw || '').split(/\n/).map(function (l) { return l.trim(); }).filter(Boolean);
+    var first = lines[0] || '';
+    if (first.length > 40) first = first.slice(0, 40);
+    return first || '未命名产品';
+  }
+
+  /* ---------- 风险标识汇总 ---------- */
+  function tagSummary(matched) {
+    var map = {};
+    matched.forEach(function (e) {
+      tagsOf(e).forEach(function (t) {
+        if (!map[t]) map[t] = { count: 0, maxRisk: 'low' };
+        map[t].count++;
+        if (RISK_ORDER[e.risk] < RISK_ORDER[map[t].maxRisk]) map[t].maxRisk = e.risk;
+      });
+    });
+    return map;
+  }
+  function verdictOf(matched) {
+    if (!matched.length) return 'safe';
+    var v = 'low';
+    matched.forEach(function (e) { if (RISK_ORDER[e.risk] < RISK_ORDER[v]) v = e.risk; });
+    return v;
+  }
+  // 按 RISK_TAGS 顺序渲染徽章
+  function renderRiskBadges(summary) {
+    var keys = Object.keys(TAGS);
+    var parts = [];
+    keys.forEach(function (t) {
+      if (!summary[t]) return;
+      var info = TAGS[t];
+      var cnt = summary[t].count;
+      parts.push('<span class="risk-badge" style="' + badgeStyle(info.color) + '" title="' + esc(info.desc) + '">' +
+        '<span class="rb-ico">' + info.icon + '</span>' + esc(info.label) +
+        (cnt > 1 ? ' <b>×' + cnt + '</b>' : '') + '</span>');
+    });
+    if (!parts.length) return '<span class="risk-badge safe">✅ 无风险标识</span>';
+    return parts.join('');
+  }
+
   /* ---------- 分析 ---------- */
   function analyze() {
     var raw = textInput.value.trim();
@@ -107,26 +193,31 @@
       return { t: t, level: tokenBest[t] ? tokenBest[t].risk : null };
     });
 
-    renderResult(matched, tokInfo, tokens.length);
+    currentResult = { raw: raw, matched: matched, totalTokens: tokens.length };
+    renderResult(currentResult, tokInfo);
     resultArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  function esc(s) {
-    return (s || '').replace(/[&<>"]/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
-    });
-  }
-
-  function renderResult(matched, tokInfo, totalTokens) {
+  function renderResult(res, tokInfo) {
+    var matched = res.matched;
+    var totalTokens = res.totalTokens;
     var h = matched.filter(function (e) { return e.risk === 'high'; }).length;
     var m = matched.filter(function (e) { return e.risk === 'medium'; }).length;
     var l = matched.filter(function (e) { return e.risk === 'low'; }).length;
+    var verdict = verdictOf(matched);
+    var summary = tagSummary(matched);
 
     var html = '';
     html += '<div class="card">';
+
+    // 总状态
+    html += '<div class="verdict-bar v-' + verdict + '">' +
+      '<span class="vb-ico">' + (verdict === 'safe' ? '✅' : (verdict === 'high' ? '🔴' : (verdict === 'medium' ? '🟠' : '🟡'))) + '</span>' +
+      '<span class="vb-text">总体判定：<b>' + verdictName(verdict) + '</b></span>' +
+      '<span class="vb-sub">共识别 ' + totalTokens + ' 项成分</span></div>';
+
     // 概览
     html += '<div class="summary">';
-    html += '<span class="sum-pill s">共识别 <b>' + totalTokens + '</b> 项成分</span>';
     html += '<span class="sum-pill h">高风险 <b>' + h + '</b></span>';
     html += '<span class="sum-pill m">中风险 <b>' + m + '</b></span>';
     html += '<span class="sum-pill l">低风险/注意 <b>' + l + '</b></span>';
@@ -142,6 +233,9 @@
     } else {
       html += '<div class="banner ok">✅ 未在资料库中检出风险成分。仍建议结合官方信息综合判断（资料库非穷尽）。</div>';
     }
+
+    // 风险标识徽章
+    html += '<div class="risk-badges"><div class="rb-title">风险标识</div>' + renderRiskBadges(summary) + '</div>';
 
     // 风险卡片
     if (matched.length) {
@@ -170,16 +264,219 @@
     });
     html += '</div></details>';
 
+    // 保存为记录
+    html += '<div class="save-panel">';
+    html += '<h4>保存到「拍照记录」</h4>';
+    html += '<div class="save-row">';
+    html += '<input id="recName" class="input" maxlength="40" placeholder="产品名称（可修改）" />';
+    html += '<select id="recCat" class="input">' +
+      '<option value="food">食品</option>' +
+      '<option value="skincare">护肤品</option>' +
+      '<option value="cosmetic">化妆品</option>' +
+      '<option value="contact">食品接触</option>' +
+      '<option value="unknown">未分类</option>' +
+      '</select>';
+    html += '</div>';
+    html += '<div class="save-actions">';
+    html += '<button id="saveRecBtn" class="btn btn-primary">💾 保存这条记录</button>';
+    html += '<span id="saveHint" class="muted small"></span>';
+    html += '</div>';
+    html += '</div>';
+
     html += '<div class="disclaimer-mini">免责：本结果基于公开报道与法规整理，仅供参考，不构成医疗/法律建议；OCR 可能误识，请以实物标签与官方信息为准。</div>';
     html += '</div>';
 
     resultArea.innerHTML = html;
+
+    // 绑定保存面板
+    var rn = document.getElementById('recName'); if (rn) rn.value = deriveName(res.raw);
+    var rc = document.getElementById('recCat'); if (rc) rc.value = deriveCategory(matched);
+    var sb = document.getElementById('saveRecBtn');
+    if (sb) sb.addEventListener('click', saveRecord);
   }
 
-  function catName(c) {
-    return { food: '食品', skincare: '护肤品', cosmetic: '化妆品', contact: '食品接触' }[c] || c;
+  /* ---------- 拍照记录 ---------- */
+  var REC_KEY = 'irs_records';
+  function loadRecords() { try { return JSON.parse(localStorage.getItem(REC_KEY)) || []; } catch (e) { return []; } }
+  function saveRecords(arr) {
+    try { localStorage.setItem(REC_KEY, JSON.stringify(arr)); }
+    catch (e) { alert('保存失败：浏览器本地存储空间可能已满（缩略图过多），请删除部分旧记录。'); }
   }
-  function riskName(r) { return { high: '高风险', medium: '中风险', low: '低风险/注意' }[r] || r; }
+  function makeThumb(dataUrl) {
+    return new Promise(function (resolve) {
+      if (!dataUrl) { resolve(null); return; }
+      var img = new Image();
+      img.onload = function () {
+        var maxW = 320, w = img.width, h = img.height;
+        if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+        var c = document.createElement('canvas'); c.width = w; c.height = h;
+        var ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0, w, h);
+        try { resolve(c.toDataURL('image/jpeg', 0.7)); } catch (e) { resolve(null); }
+      };
+      img.onerror = function () { resolve(null); };
+      img.src = dataUrl;
+    });
+  }
+  function buildRecord(name, cat, source) {
+    return {
+      id: 'r' + Date.now() + Math.random().toString(36).slice(2, 6),
+      ts: new Date().toISOString(),
+      name: name,
+      category: cat,
+      verdict: verdictOf(currentResult ? currentResult.matched : []),
+      tagSummary: tagSummary(currentResult ? currentResult.matched : []),
+      matched: (currentResult ? currentResult.matched : []).map(function (e) {
+        return { id: e.id, name: e.name, risk: e.risk, tags: tagsOf(e), type: e.type };
+      }),
+      thumb: null,
+      source: source
+    };
+  }
+  function saveRecord() {
+    if (!currentResult) { return; }
+    var name = (document.getElementById('recName').value || '').trim() || '未命名产品';
+    var cat = document.getElementById('recCat').value;
+    var source = lastPhotoDataUrl ? 'camera' : 'paste';
+    var rec = buildRecord(name, cat, source);
+    makeThumb(lastPhotoDataUrl).then(function (thumb) {
+      rec.thumb = thumb;
+      var arr = loadRecords(); arr.unshift(rec); saveRecords(arr);
+      var hint = document.getElementById('saveHint');
+      if (hint) hint.textContent = '已保存 ✓ 可在「拍照记录」查看';
+    });
+  }
+
+  function recBadgesHTML(summary) {
+    var keys = Object.keys(TAGS);
+    var parts = [];
+    keys.forEach(function (t) {
+      if (!summary[t]) return;
+      var info = TAGS[t];
+      parts.push('<span class="risk-badge mini" style="' + badgeStyle(info.color) + '" title="' + esc(info.desc) + '">' +
+        '<span class="rb-ico">' + info.icon + '</span>' + esc(info.label) +
+        (summary[t].count > 1 ? ' ×' + summary[t].count : '') + '</span>');
+    });
+    return parts.join('') || '<span class="risk-badge safe">✅ 安全</span>';
+  }
+
+  function recCardHTML(r) {
+    var thumb = r.thumb
+      ? '<img src="' + r.thumb + '" alt="" />'
+      : '<div class="rec-ph">' + (r.source === 'camera' ? '📷' : '📄') + '</div>';
+    return '<div class="rec-card" data-id="' + esc(r.id) + '">' +
+      '<div class="rec-thumb">' + thumb + '</div>' +
+      '<div class="rec-body">' +
+        '<div class="rec-title">' + esc(r.name) +
+          ' <span class="verdict v-' + r.verdict + '">' + verdictName(r.verdict) + '</span></div>' +
+        '<div class="rec-cat">' + catName(r.category) + ' · ' + (r.matched ? r.matched.length : 0) + ' 项风险成分</div>' +
+        '<div class="rec-badges">' + recBadgesHTML(r.tagSummary || {}) + '</div>' +
+        '<div class="rec-actions">' +
+          '<button class="btn-mini" data-act="detail">详情</button>' +
+          '<button class="btn-mini danger" data-act="del">删除</button>' +
+        '</div>' +
+        '<div class="rec-detail hidden"></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function recDetailHTML(r) {
+    var html = '<div class="rd-inner">';
+    if (!r.matched || !r.matched.length) {
+      html += '<p class="muted small">本次未检出风险成分。</p>';
+    } else {
+      r.matched.forEach(function (e) {
+        var tb = (e.tags || []).map(function (t) {
+          var info = TAGS[t]; if (!info) return '';
+          return '<span class="risk-badge mini" style="' + badgeStyle(info.color) + '"><span class="rb-ico">' + info.icon + '</span>' + esc(info.label) + '</span>';
+        }).join('');
+        html += '<div class="rd-item">' +
+          '<div class="rd-row"><span class="risk-name">' + esc(e.name) + '</span>' +
+          '<span class="badge ' + e.risk + '">' + riskName(e.risk) + '</span></div>' +
+          '<div class="rd-tags">' + (tb || '<span class="muted small">—</span>') + '</div>' +
+          '</div>';
+      });
+    }
+    html += '<div class="muted small" style="margin-top:8px">保存时间：' + new Date(r.ts).toLocaleString('zh-CN') + '</div>';
+    html += '</div>';
+    return html;
+  }
+
+  function renderRecords(filter) {
+    var arr = loadRecords();
+    var box = document.getElementById('recList');
+    if (!box) return;
+    if (!arr.length) {
+      box.innerHTML = '<p class="muted">还没有拍照记录。去「拍照扫描」识别一个产品，点「保存这条记录」即可收录到这里。</p>';
+      return;
+    }
+    var cats = ['food', 'skincare', 'cosmetic', 'contact', 'unknown'];
+    var html = '';
+    cats.forEach(function (cat) {
+      if (filter !== 'all' && filter !== cat) return;
+      var items = arr.filter(function (r) { return r.category === cat; });
+      if (!items.length) return;
+      html += '<div class="rec-group"><h3 class="rec-group-title">' + catName(cat) +
+        ' <span class="muted small">(' + items.length + ')</span></h3><div class="rec-grid">';
+      items.forEach(function (r) { html += recCardHTML(r); });
+      html += '</div></div>';
+    });
+    if (!html) html = '<p class="muted">该分类下暂无记录。</p>';
+    box.innerHTML = html;
+  }
+
+  function deleteRecord(id) {
+    var arr = loadRecords().filter(function (r) { return r.id !== id; });
+    saveRecords(arr);
+  }
+
+  // 事件委托：详情 / 删除
+  var recListEl = document.getElementById('recList');
+  if (recListEl) {
+    recListEl.addEventListener('click', function (ev) {
+      var card = ev.target.closest('.rec-card'); if (!card) return;
+      var id = card.getAttribute('data-id');
+      var actBtn = ev.target.closest('[data-act]');
+      if (!actBtn) return;
+      var act = actBtn.getAttribute('data-act');
+      if (act === 'del') {
+        if (confirm('确定删除这条记录？')) { deleteRecord(id); renderRecords(curRecFilter); }
+      } else if (act === 'detail') {
+        var det = card.querySelector('.rec-detail');
+        if (!det) return;
+        if (det.classList.contains('hidden')) {
+          var rec = loadRecords().filter(function (r) { return r.id === id; })[0];
+          det.innerHTML = rec ? recDetailHTML(rec) : '';
+          det.classList.remove('hidden');
+          actBtn.textContent = '收起';
+        } else {
+          det.classList.add('hidden');
+          actBtn.textContent = '详情';
+        }
+      }
+    });
+  }
+  var recFilterEl = document.getElementById('recFilter');
+  if (recFilterEl) {
+    recFilterEl.addEventListener('click', function (ev) {
+      var b = ev.target.closest('.chip'); if (!b) return;
+      this.querySelectorAll('.chip').forEach(function (c) { c.classList.toggle('active', c === b); });
+      curRecFilter = b.getAttribute('data-cat');
+      renderRecords(curRecFilter);
+    });
+  }
+
+  /* ---------- 风险标识图例（关于页） ---------- */
+  (function renderTagLegend() {
+    var box = document.getElementById('tagLegend');
+    if (!box) return;
+    var html = '';
+    Object.keys(TAGS).forEach(function (t) {
+      var info = TAGS[t];
+      html += '<span class="risk-badge" style="' + badgeStyle(info.color) + '" title="' + esc(info.desc) + '">' +
+        '<span class="rb-ico">' + info.icon + '</span>' + esc(info.label) + '</span>';
+    });
+    box.innerHTML = html;
+  })();
 
   analyzeBtn.addEventListener('click', analyze);
 
@@ -196,6 +493,10 @@
     var url = URL.createObjectURL(file);
     preview.src = url;
     imgWrap.classList.remove('hidden');
+    // 保存原图 dataURL 用于记录缩略图
+    var reader = new FileReader();
+    reader.onload = function () { lastPhotoDataUrl = reader.result; };
+    reader.readAsDataURL(file);
     runOCR(file);
   });
 
@@ -226,12 +527,14 @@
       '配料：小麦粉、白砂糖、植物油、脱氢乙酸钠、阿斯巴甜（含苯丙氨酸）、柠檬黄、日落黄、山梨酸钾、食用香精、焦亚硫酸钠、水。\n' +
       '成分（护肤）：水、甘油、对羟基苯甲酸甲酯、对羟基苯甲酸丙酯、DMDM乙内酰脲、二苯酮-3、水杨酸、香精、乙醇、视黄醇。';
     imgWrap.classList.add('hidden');
+    lastPhotoDataUrl = null;
     analyzeHint.textContent = '已载入示例，点「开始分析」查看效果。';
   });
 
   document.getElementById('clearBtn').addEventListener('click', function () {
     textInput.value = ''; fileInput.value = ''; preview.src = ''; imgWrap.classList.add('hidden');
     ocrProgress.classList.add('hidden'); resultArea.innerHTML = ''; analyzeHint.textContent = '';
+    lastPhotoDataUrl = null; currentResult = null;
   });
 
   /* ---------- 资料库 ---------- */

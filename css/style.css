@@ -148,3 +148,57 @@ body{
   .main{padding:18px 14px}
   .lib-list{grid-template-columns:1fr}
 }
+
+/* ===== 总体判定条 ===== */
+.verdict-bar{border-radius:14px;padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:10px;font-weight:600;border:1px solid transparent}
+.verdict-bar .vb-ico{font-size:22px;line-height:1}
+.verdict-bar .vb-text{font-size:15px}
+.verdict-bar .vb-sub{margin-left:auto;font-size:12.5px;opacity:.85}
+.verdict-bar.v-high{background:var(--high-bg);color:var(--high);border-color:#f5c4c4}
+.verdict-bar.v-medium{background:var(--medium-bg);color:var(--medium);border-color:#ffd9a8}
+.verdict-bar.v-low{background:var(--low-bg);color:#a67c00;border-color:#f3e2a8}
+.verdict-bar.v-safe{background:#e8f5e9;color:var(--safe);border-color:#bfe3c4}
+
+/* ===== 风险标识徽章 ===== */
+.risk-badges{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 14px}
+.rb-title{font-size:13px;font-weight:700;color:var(--muted)}
+.risk-badge{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;font-weight:600;padding:4px 10px;border-radius:99px;border:1.5px solid;line-height:1.2}
+.risk-badge .rb-ico{font-size:13px}
+.risk-badge.mini{font-size:11.5px;padding:3px 8px}
+.risk-badge.safe{color:var(--safe);border-color:#bfe3c4;background:#e8f5e9}
+.tag-legend{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 4px}
+
+/* ===== 保存面板 ===== */
+.save-panel{margin-top:16px;border:1px dashed var(--line);border-radius:14px;padding:14px;background:#fcfaff}
+.save-panel h4{margin:0 0 10px;font-size:14px}
+.save-row{display:flex;gap:10px;flex-wrap:wrap}
+.input{flex:1;min-width:140px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;background:#fff;color:var(--text);font-family:inherit}
+.input:focus{outline:none;border-color:var(--accent)}
+.save-actions{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+
+/* ===== 拍照记录 ===== */
+.rec-list{display:flex;flex-direction:column;gap:18px}
+.rec-group-title{font-size:15px;margin:4px 0 10px}
+.rec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.rec-card{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;display:flex;flex-direction:column}
+.rec-thumb{width:100%;height:150px;background:#f2f2f7;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.rec-thumb img{width:100%;height:100%;object-fit:cover}
+.rec-ph{font-size:34px;opacity:.4}
+.rec-body{padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.rec-title{font-size:14.5px;font-weight:700;display:flex;align-items:center;flex-wrap:wrap}
+.rec-cat{font-size:12.5px;color:var(--muted)}
+.rec-badges{display:flex;flex-wrap:wrap;gap:5px}
+.rec-actions{display:flex;gap:8px;margin-top:4px}
+.btn-mini{font-size:12.5px;padding:6px 12px;border-radius:9px;border:1px solid var(--line);background:#fff;color:var(--text);cursor:pointer;font-family:inherit}
+.btn-mini:hover{background:#f6f6fb}
+.btn-mini.danger{color:var(--high);border-color:#f5c4c4}
+.btn-mini.danger:hover{background:var(--high-bg)}
+.rec-detail{border-top:1px solid var(--line);padding:10px 14px;background:#fafafe}
+.rd-item{border-bottom:1px dashed var(--line);padding:8px 0}
+.rd-item:last-child{border-bottom:none}
+.rd-row{display:flex;align-items:center;gap:8px}
+.rd-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+
+/* ===== 小元素 ===== */
+.disclaimer-mini{margin-top:14px;font-size:12px;color:var(--muted);line-height:1.5}
+.hidden{display:none}
