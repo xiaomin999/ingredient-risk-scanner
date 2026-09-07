@@ -56,8 +56,12 @@
         <div class="card">
           <div class="upload-row">
             <label class="btn btn-primary file-btn">
-              📷 拍照 / 选择图片
+              📷 拍照
               <input type="file" id="fileInput" accept="image/*" capture="environment" hidden />
+            </label>
+            <label class="btn btn-ghost file-btn">
+              🖼️ 从相册选择
+              <input type="file" id="albumInput" accept="image/*" hidden />
             </label>
             <button class="btn btn-ghost" id="sampleBtn">载入示例</button>
             <button class="btn btn-ghost" id="clearBtn">清空</button>

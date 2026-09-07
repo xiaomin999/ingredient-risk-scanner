@@ -794,8 +794,7 @@
     if (msg) ocrText.textContent = msg;
   }
 
-  fileInput.addEventListener('change', function (e) {
-    var file = e.target.files && e.target.files[0];
+  function handleFile(file) {
     if (!file) return;
     var url = URL.createObjectURL(file);
     preview.src = url;
@@ -804,6 +803,15 @@
     reader.onload = function () { lastPhotoDataUrl = reader.result; };
     reader.readAsDataURL(file);
     runOCR(file);
+  }
+  fileInput.addEventListener('change', function (e) {
+    handleFile(e.target.files && e.target.files[0]);
+    e.target.value = ''; // 允许再次选择同一张图片
+  });
+  var albumInput = document.getElementById('albumInput');
+  if (albumInput) albumInput.addEventListener('change', function (e) {
+    handleFile(e.target.files && e.target.files[0]);
+    e.target.value = '';
   });
 
   /* ---------- VLM OCR（Qwen-VL via Supabase Edge Function） ---------- */
